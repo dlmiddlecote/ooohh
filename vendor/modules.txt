@@ -1,0 +1,37 @@
+# github.com/boltdb/bolt v1.3.1
+## explicit
+github.com/boltdb/bolt
+# github.com/golang/protobuf v1.3.4
+github.com/golang/protobuf/proto
+# github.com/pkg/errors v0.9.1
+## explicit
+github.com/pkg/errors
+# github.com/segmentio/ksuid v1.0.2
+## explicit
+github.com/segmentio/ksuid
+# github.com/vmihailenco/msgpack/v5 v5.0.0-beta.1
+## explicit
+github.com/vmihailenco/msgpack/v5
+github.com/vmihailenco/msgpack/v5/codes
+# github.com/vmihailenco/tagparser v0.1.1
+github.com/vmihailenco/tagparser
+github.com/vmihailenco/tagparser/internal
+github.com/vmihailenco/tagparser/internal/parser
+# golang.org/x/net v0.0.0-20200301022130-244492dfa37a
+golang.org/x/net/context
+# golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1
+## explicit
+golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/unix
+# google.golang.org/appengine v1.6.5
+google.golang.org/appengine
+google.golang.org/appengine/datastore
+google.golang.org/appengine/datastore/internal/cloudkey
+google.golang.org/appengine/datastore/internal/cloudpb
+google.golang.org/appengine/internal
+google.golang.org/appengine/internal/app_identity
+google.golang.org/appengine/internal/base
+google.golang.org/appengine/internal/datastore
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/modules
+google.golang.org/appengine/internal/remote_api
