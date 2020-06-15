@@ -18,10 +18,11 @@ type Dial struct {
 // Board represents a collection of Dials to be displayed together.
 // The token is defined by the user, and is used for some simple authorization.
 type Board struct {
-	ID    string `json:"id"`
-	Token string `json:"-"`
-	Name  string `json:"name"`
-	Dials []Dial `json:"dials"`
+	ID        string    `json:"id"`
+	Token     string    `json:"-"`
+	Name      string    `json:"name"`
+	Dials     []Dial    `json:"dials"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Service represents a service for managing dials and boards
