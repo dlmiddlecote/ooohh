@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	stdbolt "github.com/boltdb/bolt"
+	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 
 	"github.com/dlmiddlecote/ooohh"
-	"github.com/dlmiddlecote/ooohh/pkg/bolt"
+	"github.com/dlmiddlecote/ooohh/pkg/service"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func run() error {
 	var err error
 	var s ooohh.Service
 	{
-		db, err := stdbolt.Open("/tmp/bolt.db", 0600, nil)
+		db, err := bolt.Open("/tmp/bolt.db", 0600, nil)
 		if err != nil {
 			return errors.Wrap(err, "opening db")
 		}
@@ -36,7 +36,7 @@ func run() error {
 			return time.Now()
 		}
 
-		s, err = bolt.NewService(db, now)
+		s, err = service.NewService(db, now)
 	}
 
 	if err != nil {
