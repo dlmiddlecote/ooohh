@@ -6,6 +6,9 @@ github.com/blendle/zapdriver
 github.com/boltdb/bolt
 # github.com/golang/protobuf v1.3.4
 github.com/golang/protobuf/proto
+# github.com/matryer/is v1.3.0
+## explicit
+github.com/matryer/is
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
@@ -32,6 +35,7 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
+go.uber.org/zap/zaptest/observer
 # golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 golang.org/x/net/context
 # golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1

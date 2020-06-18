@@ -59,7 +59,7 @@ func (s *service) CreateDial(ctx context.Context, name, token string) (*ooohh.Di
 		Token:     token,
 		Name:      name,
 		Value:     0.0,
-		UpdatedAt: s.now(),
+		UpdatedAt: s.now().UTC(),
 	}
 
 	if v, err := msgpack.Marshal(d); err != nil {
@@ -87,6 +87,10 @@ func (s *service) GetDial(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, er
 	} else if err := msgpack.Unmarshal(v, &d); err != nil {
 		return nil, errors.Wrap(err, "reading dial")
 	}
+
+	// Update timezone.
+	d.UpdatedAt = d.UpdatedAt.UTC()
+
 	return &d, nil
 }
 
@@ -118,7 +122,7 @@ func (s *service) SetDial(ctx context.Context, id ooohh.DialID, token string, va
 
 	// Update value
 	d.Value = value
-	d.UpdatedAt = s.now()
+	d.UpdatedAt = s.now().UTC()
 
 	if v, err := msgpack.Marshal(d); err != nil {
 		return errors.Wrap(err, "marshalling dial")
@@ -147,7 +151,7 @@ func (s *service) CreateBoard(ctx context.Context, name, token string) (*ooohh.B
 		Token:     token,
 		Name:      name,
 		Dials:     []ooohh.Dial{},
-		UpdatedAt: s.now(),
+		UpdatedAt: s.now().UTC(),
 	}
 
 	if v, err := msgpack.Marshal(b); err != nil {
@@ -190,6 +194,9 @@ func (s *service) GetBoard(ctx context.Context, id ooohh.BoardID) (*ooohh.Board,
 	// Associate populated dials to board.
 	b.Dials = dials
 
+	// Update timezone.
+	b.UpdatedAt = b.UpdatedAt.UTC()
+
 	return &b, nil
 }
 
@@ -228,7 +235,7 @@ func (s *service) SetBoard(ctx context.Context, id ooohh.BoardID, token string, 
 
 	// Update value
 	b.Dials = allDials
-	b.UpdatedAt = s.now()
+	b.UpdatedAt = s.now().UTC()
 
 	if v, err := msgpack.Marshal(b); err != nil {
 		return errors.Wrap(err, "marshalling board")
