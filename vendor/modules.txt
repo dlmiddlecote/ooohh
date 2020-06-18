@@ -1,3 +1,6 @@
+# github.com/blendle/zapdriver v1.3.1
+## explicit
+github.com/blendle/zapdriver
 # github.com/boltdb/bolt v1.3.1
 ## explicit
 github.com/boltdb/bolt
@@ -17,6 +20,18 @@ github.com/vmihailenco/msgpack/v5/codes
 github.com/vmihailenco/tagparser
 github.com/vmihailenco/tagparser/internal
 github.com/vmihailenco/tagparser/internal/parser
+# go.uber.org/atomic v1.6.0
+go.uber.org/atomic
+# go.uber.org/multierr v1.5.0
+go.uber.org/multierr
+# go.uber.org/zap v1.15.0
+## explicit
+go.uber.org/zap
+go.uber.org/zap/buffer
+go.uber.org/zap/internal/bufferpool
+go.uber.org/zap/internal/color
+go.uber.org/zap/internal/exit
+go.uber.org/zap/zapcore
 # golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 golang.org/x/net/context
 # golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1
