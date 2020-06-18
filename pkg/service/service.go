@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
 	"github.com/vmihailenco/msgpack/v5"
+	"go.uber.org/zap"
 
 	"github.com/dlmiddlecote/ooohh"
 )
@@ -15,11 +16,12 @@ import (
 var _ ooohh.Service = &service{}
 
 type service struct {
-	db  *bolt.DB
-	now func() time.Time
+	db     *bolt.DB
+	logger *zap.SugaredLogger
+	now    func() time.Time
 }
 
-func NewService(db *bolt.DB, now func() time.Time) (*service, error) {
+func NewService(db *bolt.DB, logger *zap.SugaredLogger, now func() time.Time) (*service, error) {
 
 	// Initialize top-level buckets.
 	txn, err := db.Begin(true)
@@ -36,14 +38,14 @@ func NewService(db *bolt.DB, now func() time.Time) (*service, error) {
 		return nil, errors.Wrap(err, "creating boards bucket")
 	}
 
-	return &service{db, now}, txn.Commit()
+	return &service{db, logger, now}, txn.Commit()
 }
 
 // CreateDial will create the dial with the given name, and associate it to the specified token.
 func (s *service) CreateDial(ctx context.Context, name, token string) (*ooohh.Dial, error) {
 
 	// generate new id
-	id := ksuid.New().String()
+	id := ooohh.DialID(ksuid.New().String())
 
 	// start read/write transaction
 	txn, err := s.db.Begin(true)
@@ -70,7 +72,7 @@ func (s *service) CreateDial(ctx context.Context, name, token string) (*ooohh.Di
 }
 
 // GetDial retrieves a dial by ID. Anyone can retrieve any dial with its ID.
-func (s *service) GetDial(ctx context.Context, id string) (*ooohh.Dial, error) {
+func (s *service) GetDial(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, error) {
 
 	// start a read-only transaction
 	txn, err := s.db.Begin(false)
@@ -90,7 +92,7 @@ func (s *service) GetDial(ctx context.Context, id string) (*ooohh.Dial, error) {
 
 // SetDial updates the dial value. It can be updated by anyone who knows
 // the original token it was created with.
-func (s *service) SetDial(ctx context.Context, id, token string, value float64) error {
+func (s *service) SetDial(ctx context.Context, id ooohh.DialID, token string, value float64) error {
 
 	// start read/write transaction
 	txn, err := s.db.Begin(true)
@@ -131,7 +133,7 @@ func (s *service) SetDial(ctx context.Context, id, token string, value float64) 
 func (s *service) CreateBoard(ctx context.Context, name, token string) (*ooohh.Board, error) {
 
 	// generate new id
-	id := ksuid.New().String()
+	id := ooohh.BoardID(ksuid.New().String())
 
 	// start read/write transaction
 	txn, err := s.db.Begin(true)
@@ -158,7 +160,7 @@ func (s *service) CreateBoard(ctx context.Context, name, token string) (*ooohh.B
 }
 
 // GetBoard retrieves a board by ID. Anyone can retrieve any board with its ID.
-func (s *service) GetBoard(ctx context.Context, id string) (*ooohh.Board, error) {
+func (s *service) GetBoard(ctx context.Context, id ooohh.BoardID) (*ooohh.Board, error) {
 
 	// start a read-only transaction
 	txn, err := s.db.Begin(false)
@@ -173,12 +175,27 @@ func (s *service) GetBoard(ctx context.Context, id string) (*ooohh.Board, error)
 	} else if err := msgpack.Unmarshal(v, &b); err != nil {
 		return nil, errors.Wrap(err, "reading board")
 	}
+
+	// Get dial values.
+	dials := make([]ooohh.Dial, 0)
+	for _, d := range b.Dials {
+		dial, err := s.GetDial(ctx, d.ID)
+		if err != nil {
+			s.logger.Errorw("GetDial error", "id", d.ID, "board", id, "err", err)
+			continue
+		}
+		dials = append(dials, *dial)
+	}
+
+	// Associate populated dials to board.
+	b.Dials = dials
+
 	return &b, nil
 }
 
 // SetBoard updates the dials associated with the board. It can be updated
 // by anyone who knows the original token it was created with.
-func (s *service) SetBoard(ctx context.Context, id, token string, dials []ooohh.Dial) error {
+func (s *service) SetBoard(ctx context.Context, id ooohh.BoardID, token string, dials []ooohh.DialID) error {
 
 	// start read/write transaction
 	txn, err := s.db.Begin(true)
@@ -197,13 +214,20 @@ func (s *service) SetBoard(ctx context.Context, id, token string, dials []ooohh.
 		return errors.Wrap(err, "reading board")
 	}
 
-	// check token matches
+	// Check token matches
 	if token != b.Token {
 		return ooohh.ErrUnauthorized
 	}
 
+	// Populate minimal dial.
+	// Value not stored on set.
+	allDials := make([]ooohh.Dial, len(dials))
+	for i := range dials {
+		allDials[i] = ooohh.Dial{ID: dials[i]}
+	}
+
 	// Update value
-	b.Dials = dials
+	b.Dials = allDials
 	b.UpdatedAt = s.now()
 
 	if v, err := msgpack.Marshal(b); err != nil {

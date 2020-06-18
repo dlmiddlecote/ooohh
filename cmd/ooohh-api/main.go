@@ -7,8 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/blendle/zapdriver"
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	"github.com/dlmiddlecote/ooohh"
 	"github.com/dlmiddlecote/ooohh/pkg/service"
@@ -23,6 +25,17 @@ func main() {
 
 func run() error {
 
+	var logger *zap.SugaredLogger
+	{
+		if l, err := zapdriver.NewProduction(); err != nil {
+			return errors.Wrap(err, "creating logger")
+		} else {
+			logger = l.Sugar()
+		}
+	}
+	// Flush logs at the end of the applications lifetime
+	defer logger.Sync()
+
 	var err error
 	var s ooohh.Service
 	{
@@ -31,12 +44,12 @@ func run() error {
 			return errors.Wrap(err, "opening db")
 		}
 		defer db.Close()
-	
+
 		now := func() time.Time {
 			return time.Now()
 		}
 
-		s, err = service.NewService(db, now)
+		s, err = service.NewService(db, logger, now)
 	}
 
 	if err != nil {
@@ -77,9 +90,15 @@ func run() error {
 	}
 
 	// add a dial to the board
-	err = s.SetBoard(ctx, b.ID, "ANOTHERSECRET", []ooohh.Dial{*d})
+	err = s.SetBoard(ctx, b.ID, "ANOTHERSECRET", []ooohh.DialID{d.ID})
 	if err != nil {
 		return errors.Wrap(err, "adding dial to board")
+	}
+
+	// Update the value of the dial
+	err = s.SetDial(ctx, d.ID, "ASECRETTOKEN", 33.0)
+	if err != nil {
+		return errors.Wrap(err, "setting dial")
 	}
 
 	// get the board
