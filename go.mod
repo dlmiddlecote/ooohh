@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/blendle/zapdriver v1.3.1
 	github.com/boltdb/bolt v1.3.1
+	github.com/dlmiddlecote/kit v0.3.0
 	github.com/matryer/is v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/segmentio/ksuid v1.0.2
