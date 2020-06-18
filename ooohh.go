@@ -5,10 +5,16 @@ import (
 	"time"
 )
 
+// DialID represents the unique identifier of a dial.
+type DialID string
+
+// BoardID represents the unique identifier of a board.
+type BoardID string
+
 // Dial represents an ooohh, wtf level for a user.
 // The token is defined by the user, and is used for some simple authorization.
 type Dial struct {
-	ID        string    `json:"id"`
+	ID        DialID    `json:"id"`
 	Token     string    `json:"-"`
 	Name      string    `json:"name"`
 	Value     float64   `json:"value"`
@@ -18,7 +24,7 @@ type Dial struct {
 // Board represents a collection of Dials to be displayed together.
 // The token is defined by the user, and is used for some simple authorization.
 type Board struct {
-	ID        string    `json:"id"`
+	ID        BoardID   `json:"id"`
 	Token     string    `json:"-"`
 	Name      string    `json:"name"`
 	Dials     []Dial    `json:"dials"`
@@ -31,19 +37,19 @@ type Service interface {
 	// and associate it to the specified token.
 	CreateDial(ctx context.Context, name, token string) (*Dial, error)
 	// GetDial retrieves a dial by ID. Anyone can retrieve any dial with its ID.
-	GetDial(ctx context.Context, id string) (*Dial, error)
+	GetDial(ctx context.Context, id DialID) (*Dial, error)
 	// SetDial updates the dial value. It can be updated by anyone who knows
 	// the original token it was created with.
-	SetDial(ctx context.Context, id, token string, value float64) error
+	SetDial(ctx context.Context, id DialID, token string, value float64) error
 
 	// CreateBoard will create a board with the given name,
 	// and associate it to the specified token.
 	CreateBoard(ctx context.Context, name, token string) (*Board, error)
 	// GetBoard retrieves a board by ID. Anyone can retrieve any board with its ID.
-	GetBoard(ctx context.Context, id string) (*Board, error)
+	GetBoard(ctx context.Context, id BoardID) (*Board, error)
 	// SetBoard updates the dials associated with the board. It can be updated
 	// by anyone who knows the original token it was created with.
-	SetBoard(ctx context.Context, id, token string, dials []Dial) error
+	SetBoard(ctx context.Context, id BoardID, token string, dials []DialID) error
 }
 
 //
