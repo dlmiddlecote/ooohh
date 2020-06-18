@@ -13,8 +13,6 @@ import (
 	"github.com/dlmiddlecote/ooohh"
 )
 
-var _ ooohh.Service = &service{}
-
 type service struct {
 	db     *bolt.DB
 	logger *zap.SugaredLogger
