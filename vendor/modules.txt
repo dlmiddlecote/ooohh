@@ -1,3 +1,6 @@
+# github.com/ardanlabs/conf v1.3.2
+## explicit
+github.com/ardanlabs/conf
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
 # github.com/blendle/zapdriver v1.3.1
@@ -30,8 +33,10 @@ github.com/peterbourgon/mergemap
 ## explicit
 github.com/pkg/errors
 # github.com/prometheus/client_golang v1.6.0
+## explicit
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
+github.com/prometheus/client_golang/prometheus/promhttp
 # github.com/prometheus/client_model v0.2.0
 github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.9.1

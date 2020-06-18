@@ -2,18 +2,30 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/ardanlabs/conf"
 	"github.com/blendle/zapdriver"
 	"github.com/boltdb/bolt"
+	kitapi "github.com/dlmiddlecote/kit/api"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
-	"github.com/dlmiddlecote/ooohh"
+	"github.com/dlmiddlecote/ooohh/pkg/api"
 	"github.com/dlmiddlecote/ooohh/pkg/service"
+)
+
+const (
+	// buildVersion is the git version of this program. It is set using build flags.
+	buildVersion = "dev"
+	// namespace is the prefix used for application configuration.
+	namespace = "OOOHH"
 )
 
 func main() {
@@ -24,6 +36,39 @@ func main() {
 }
 
 func run() error {
+	//
+	// Configuration
+	//
+
+	var cfg struct {
+		Web struct {
+			APIHost         string        `conf:"default:0.0.0.0:8080"`
+			DebugHost       string        `conf:"default:0.0.0.0:8090"`
+			EnableDebug     bool          `conf:"default:true"`
+			ShutdownTimeout time.Duration `conf:"default:5s"`
+		}
+		DB struct {
+			Path string `conf:"default:/tmp/ooohh.db"`
+		}
+	}
+
+	// Parse configuration, showing usage if needed.
+	if err := conf.Parse(os.Args[1:], namespace, &cfg); err != nil {
+		if err == conf.ErrHelpWanted {
+			usage, err := conf.Usage(namespace, &cfg)
+			if err != nil {
+				return errors.Wrap(err, "generating config usage")
+			}
+
+			fmt.Println(usage)
+			return nil
+		}
+		return errors.Wrap(err, "parsing config")
+	}
+
+	//
+	// Logging
+	//
 
 	var logger *zap.SugaredLogger
 	{
@@ -36,83 +81,103 @@ func run() error {
 	// Flush logs at the end of the applications lifetime
 	defer logger.Sync()
 
-	var err error
-	var s ooohh.Service
-	{
-		db, err := bolt.Open("/tmp/bolt.db", 0600, nil)
-		if err != nil {
-			return errors.Wrap(err, "opening db")
-		}
-		defer db.Close()
+	logger.Infow("Application starting", "version", buildVersion)
+	defer logger.Info("Application finished")
 
+	//
+	// DB
+	//
+
+	db, err := bolt.Open(cfg.DB.Path, 0600, nil)
+	if err != nil {
+		return errors.Wrap(err, "opening db")
+	}
+	defer db.Close()
+
+	//
+	// Debug listener
+	//
+
+	if cfg.Web.EnableDebug {
+
+		// Expose Prometheus metrics at '/metrics'.
+		http.Handle("/metrics", promhttp.Handler())
+
+		// Start the debug listener in the background, we don't gracefully shut this down.
+		go func() {
+			logger.Infow("Debug listener starting", "addr", cfg.Web.DebugHost)
+			err := http.ListenAndServe(cfg.Web.DebugHost, http.DefaultServeMux)
+			logger.Infow("Debug listener closed", "err", err)
+		}()
+	}
+
+	//
+	// Application server setup
+	//
+
+	var app http.Server
+	{
 		now := func() time.Time {
 			return time.Now()
 		}
 
-		s, err = service.NewService(db, logger, now)
+		// Initialise our ooohh service. This exposes all our desired interactions.
+		s, err := service.NewService(db, logger.Named("service"), now)
+		if err != nil {
+			return errors.Wrap(err, "creating service")
+		}
+
+		// Create our API. This is an implementation of the kit API.
+		// It has a dependency on the ooohh service, as it provides this service as a
+		// HTTP API.
+		oApi := api.NewAPI(logger.Named("api"), s)
+
+		// Create our http.Server, exposing the account API on the given host.
+		app = kitapi.NewServer(cfg.Web.APIHost, logger.Named("http"), oApi)
 	}
 
-	if err != nil {
-		return errors.Wrap(err, "creating service")
-	}
+	// Make a channel to listen for an interrupt or terminate signal from the OS.
+	// Use a buffered channel because the signal package requires it.
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
-	ctx := context.Background()
+	// Make a channel to listen for errors coming from the listener. Use a
+	// buffered channel so the goroutine can exit if we don't collect this error.
+	serverErrors := make(chan error, 1)
 
-	// Create a dial
-	d, err := s.CreateDial(ctx, "dan-middlecote", "ASECRETTOKEN")
-	if err != nil {
-		return errors.Wrap(err, "creating dial")
-	}
+	// Start the server listening for requests.
+	go func() {
+		logger.Infow("API listener starting", "addr", app.Addr)
+		serverErrors <- app.ListenAndServe()
+	}()
 
-	// Update the value of the dial
-	err = s.SetDial(ctx, d.ID, "ASECRETTOKEN", 67.0)
-	if err != nil {
-		return errors.Wrap(err, "setting dial")
-	}
+	//
+	// Shutdown
+	//
 
-	// Retrieve the dial
-	d, err = s.GetDial(ctx, d.ID)
-	if err != nil {
-		return errors.Wrap(err, "getting dial")
-	}
+	// Blocking main and waiting for shutdown.
+	select {
+	case err := <-serverErrors:
+		return errors.Wrap(err, "server error")
 
-	// Print the dial
-	jd, err := json.Marshal(d)
-	if err != nil {
-		return errors.Wrap(err, "marshalling dial")
-	}
-	fmt.Printf("%v\n", string(jd))
+	case sig := <-shutdown:
+		logger.Infow("Start shutdown", "signal", sig)
 
-	// create a board
-	b, err := s.CreateBoard(ctx, "CDP", "ANOTHERSECRET")
-	if err != nil {
-		return errors.Wrap(err, "creating board")
-	}
+		// Give outstanding requests a deadline for completion.
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.Web.ShutdownTimeout)
+		defer cancel()
 
-	// add a dial to the board
-	err = s.SetBoard(ctx, b.ID, "ANOTHERSECRET", []ooohh.DialID{d.ID})
-	if err != nil {
-		return errors.Wrap(err, "adding dial to board")
-	}
+		// Asking listener to shutdown and load shed.
+		err := app.Shutdown(ctx)
+		if err != nil {
+			logger.Infow("Graceful shutdown did not complete", "err", err)
+			err = app.Close()
+		}
 
-	// Update the value of the dial
-	err = s.SetDial(ctx, d.ID, "ASECRETTOKEN", 33.0)
-	if err != nil {
-		return errors.Wrap(err, "setting dial")
+		if err != nil {
+			return errors.Wrap(err, "could not stop server gracefully")
+		}
 	}
-
-	// get the board
-	b, err = s.GetBoard(ctx, b.ID)
-	if err != nil {
-		return errors.Wrap(err, "getting board")
-	}
-
-	// print the board
-	jb, err := json.Marshal(b)
-	if err != nil {
-		return errors.Wrap(err, "marshalling board")
-	}
-	fmt.Printf("%v\n", string(jb))
 
 	return nil
 }
