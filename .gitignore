@@ -16,3 +16,6 @@
 
 # Binary
 bin/*
+
+# goreleaser
+dist/*

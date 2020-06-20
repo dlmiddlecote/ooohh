@@ -5,7 +5,9 @@ before:
     # You may remove this if you don't use go modules.
     - go mod download
 builds:
-  - env:
+  - main: ./cmd/ooohh-cli/main.go
+    binary: ooohh
+    env:
       - CGO_ENABLED=0
 archives:
   - replacements:
