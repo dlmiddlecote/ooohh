@@ -53,7 +53,7 @@ func TestBoltServiceIsOoohhService(t *testing.T) {
 
 	is := is.New(t)
 
-	var i interface{} = new(service)
+	var i interface{} = &service{}
 	_, ok := i.(ooohh.Service)
 	is.True(ok) // bolt service is ooohh service.
 }
