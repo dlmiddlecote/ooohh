@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"go.uber.org/zap"
@@ -110,7 +111,43 @@ func (c *client) GetDial(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, err
 // SetDial updates the dial value. It can be updated by anyone who knows
 // the original token it was created with.
 func (c *client) SetDial(ctx context.Context, id ooohh.DialID, token string, value float64) error {
-	panic("not implemented") // TODO: Implement
+
+	rel := &url.URL{Path: path.Join("/api/dials", string(id))}
+	u := c.base.ResolveReference(rel)
+
+	b, err := json.Marshal(setDialRequest{
+		Token: token,
+		Value: value,
+	})
+	if err != nil {
+		return errors.Wrap(err, "marshalling json for request")
+	}
+
+	r, err := http.NewRequestWithContext(ctx, "PATCH", u.String(), bytes.NewBuffer(b))
+	if err != nil {
+		return errors.Wrap(err, "creating request")
+	}
+
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Accept", "application/json")
+
+	resp, err := c.c.Do(r)
+	if err != nil {
+		return errors.Wrap(err, "making request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// decode problem response
+		var problem problemResponse
+		err = json.NewDecoder(resp.Body).Decode(&problem)
+		if err != nil {
+			return errors.Wrap(err, "invalid response")
+		}
+		return errors.New(problem.Title)
+	}
+
+	return nil
 }
 
 // CreateBoard will create a board with the given name,
