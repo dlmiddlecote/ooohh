@@ -310,7 +310,7 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 		}
 
 		var body request
-		err = a.dec.Decode(body, r.PostForm)
+		err = a.dec.Decode(&body, r.PostForm)
 		if err != nil {
 			a.logger.Errorw("could not parse request", "err", err)
 			// Return with a 500 to tell slack that we couldn't process this request.
