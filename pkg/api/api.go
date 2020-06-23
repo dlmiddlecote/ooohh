@@ -301,12 +301,21 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := r.ParseForm()
+		if err != nil {
+			a.logger.Errorw("could not parse form", "err", err)
+			// Return with a 500 to tell slack that we couldn't process this request.
+			api.Problem(w, r, "Invalid Request", "Could not parse form", http.StatusInternalServerError)
+			return
+		}
+
 		var body request
-		err := a.dec.Decode(body, r.PostForm)
+		err = a.dec.Decode(body, r.PostForm)
 		if err != nil {
 			a.logger.Errorw("could not parse request", "err", err)
 			// Return with a 500 to tell slack that we couldn't process this request.
 			api.Problem(w, r, "Invalid Request", "Could not parse form values", http.StatusInternalServerError)
+			return
 		}
 
 		// Check the command is indeed `/wtf`.
