@@ -20,9 +20,6 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/gorilla/schema v1.1.0
-## explicit
-github.com/gorilla/schema
 # github.com/julienschmidt/httprouter v1.3.0
 github.com/julienschmidt/httprouter
 # github.com/matryer/is v1.3.0

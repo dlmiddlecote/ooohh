@@ -8,7 +8,6 @@ import (
 
 	"github.com/dlmiddlecote/kit/api"
 	"github.com/dlmiddlecote/ooohh/pkg/slack"
-	"github.com/gorilla/schema"
 	"go.uber.org/zap"
 
 	"github.com/dlmiddlecote/ooohh"
@@ -18,15 +17,13 @@ type ooohhAPI struct {
 	logger *zap.SugaredLogger
 	s      ooohh.Service
 	ss     slack.Service
-	dec    *schema.Decoder
 }
 
 // NewAPI returns an implementation of api.API.
 // The returned API exposes the given ooohh service as an HTTP API.
 // The Slack command webhook is also exposed.
 func NewAPI(logger *zap.SugaredLogger, s ooohh.Service, ss slack.Service) *ooohhAPI {
-	dec := schema.NewDecoder()
-	return &ooohhAPI{logger, s, ss, dec}
+	return &ooohhAPI{logger, s, ss}
 }
 
 // Endpoints implements api.API. We list all API endpoints here.
@@ -289,11 +286,10 @@ func (a *ooohhAPI) setBoardDials() http.Handler {
 
 func (a *ooohhAPI) slackCommand() http.Handler {
 	type request struct {
-		Command     string `schema:"command"`
-		Text        string `schema:"text"`
-		UserID      string `schema:"user_id"`
-		TeamID      string `schema:"team_id"`
-		ResponseURL string `schema:"response_url"`
+		Command string
+		Text    string
+		UserID  string
+		TeamID  string
 	}
 	type response struct {
 		Type string `json:"response_type"`
@@ -301,6 +297,7 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		err := r.ParseForm()
 		if err != nil {
 			a.logger.Errorw("could not parse form", "err", err)
@@ -309,10 +306,15 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 			return
 		}
 
-		var body request
-		err = a.dec.Decode(&body, r.PostForm)
-		if err != nil {
-			a.logger.Errorw("could not parse request", "err", err)
+		body := request{
+			Command: r.FormValue("command"),
+			Text:    r.FormValue("text"),
+			UserID:  r.FormValue("user_id"),
+			TeamID:  r.FormValue("team_id"),
+		}
+
+		if body.Command == "" || body.Text == "" || body.UserID == "" || body.TeamID == "" {
+			a.logger.Errorw("could not parse request", "body", body)
 			// Return with a 500 to tell slack that we couldn't process this request.
 			api.Problem(w, r, "Invalid Request", "Could not parse form values", http.StatusInternalServerError)
 			return
