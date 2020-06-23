@@ -1,4 +1,0 @@
-f6a029e9368020841da87630c3bb8c0a52da15045cbb168c042e0efa8ef86f36  ooohh_0.0.0_Linux_x86_64.tar.gz
-f1eac7e88c752a712facddf79108f5da8049c8267918bba69dbf2cf3f70b32b4  ooohh_0.0.0_Darwin_x86_64.tar.gz
-c85e89b9c8ae83939238ff41937c3f6d7b2bd0dfe4aaacd4cba7be7dc5fdfb13  ooohh_0.0.0_Linux_i386.tar.gz
-a8e987dff80a9c1a6192cf029bd5a209add1205f346954ea65dc4f45ae4b97be  ooohh_0.0.0_Darwin_i386.tar.gz
