@@ -313,7 +313,7 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 			TeamID:  r.FormValue("team_id"),
 		}
 
-		if body.Command == "" || body.Text == "" || body.UserID == "" || body.TeamID == "" {
+		if body.Command == "" || body.UserID == "" || body.TeamID == "" {
 			a.logger.Errorw("could not parse request", "body", body)
 			// Return with a 500 to tell slack that we couldn't process this request.
 			api.Problem(w, r, "Invalid Request", "Could not parse form values", http.StatusInternalServerError)
@@ -329,8 +329,18 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 			return
 		}
 
-		// Parse text into a float64. Respond with message if not ok.
 		t := strings.TrimSpace(body.Text)
+
+		// Return a help string.
+		if t == "help" {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Use the following format to set a value: `/wtf value`",
+			})
+			return
+		}
+
+		// Parse text into a float64. Respond with message if not ok.
 		value, err := strconv.ParseFloat(t, 64)
 		if err != nil {
 			api.Respond(w, r, http.StatusOK, response{
