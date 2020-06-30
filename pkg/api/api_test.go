@@ -106,8 +106,6 @@ func TestCreateDial(t *testing.T) {
 
 func TestCreateDialValidation(t *testing.T) {
 
-	is := is.New(t)
-
 	now := time.Now().Truncate(time.Second)
 
 	// Get a logger.
@@ -300,8 +298,6 @@ func TestGetDial(t *testing.T) {
 }
 
 func TestGetDialErrors(t *testing.T) {
-
-	is := is.New(t)
 
 	// Get a logger.
 	logger, _ := newTestLogger(zap.InfoLevel)
@@ -648,7 +644,6 @@ func TestSetDialErrors(t *testing.T) {
 			is.Equal(actualBody.Detail, tt.expDetail) // detail is correct.
 		})
 	}
-
 }
 
 func TestCreateBoard(t *testing.T) {
@@ -841,6 +836,141 @@ func TestCreateBoardError(t *testing.T) {
 }
 
 func TestGetBoard(t *testing.T) {
+
+	is := is.New(t)
+
+	now := time.Now().Truncate(time.Second)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create a mock service, with GetBoard implemented.
+	s := &mock.Service{
+		GetBoardFn: func(ctx context.Context, id ooohh.BoardID) (*ooohh.Board, error) {
+			return &ooohh.Board{
+				ID:    id,
+				Token: "token",
+				Name:  "test",
+				Dials: []ooohh.Dial{{
+					ID:        "dial",
+					Token:     "token",
+					Name:      "test",
+					Value:     66.6,
+					UpdatedAt: now,
+				}},
+				UpdatedAt: now,
+			}, nil
+		},
+	}
+
+	// Get an API.
+	a := NewAPI(logger, s)
+
+	// Create a new request.
+	r, err := newRequest("GET", "/api/boards/:id", nil, httprouter.Params{{Key: "id", Value: "1234"}})
+	is.NoErr(err)
+
+	// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+	rr := httptest.NewRecorder()
+
+	// Invoke the get board handler.
+	a.getBoard().ServeHTTP(rr, r)
+
+	// Check that the GetBoard function has been invoked.
+	is.True(s.GetBoardInvoked)
+
+	// Check the response status code is correct.
+	is.Equal(rr.Code, http.StatusOK)
+
+	// Check the response body is correct
+	var actualBody ooohh.Board
+	err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+	is.NoErr(err) // actual body is json.
+
+	is.Equal(actualBody.ID, ooohh.BoardID("1234"))    // id is correct.
+	is.Equal(actualBody.Name, "test")                 // name is correct.
+	is.Equal(len(actualBody.Dials), 1)                // dial length is correct.
+	is.Equal(actualBody.UpdatedAt.Unix(), now.Unix()) // updated at time is correct.
+	is.Equal(actualBody.Token, "")                    // token is not in response body.
+
+	// Check returned dial is correct.
+	dial := actualBody.Dials[0]
+
+	is.Equal(dial.ID, ooohh.DialID("dial"))     // dial id is correct.
+	is.Equal(dial.Name, "test")                 // dial name is correct.
+	is.Equal(dial.Value, 66.6)                  // dial value is correct.
+	is.Equal(dial.UpdatedAt.Unix(), now.Unix()) // dial updated at is correct.
+	is.Equal(dial.Token, "")                    // dial token is empty.
+}
+
+func TestGetBoardErrors(t *testing.T) {
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	for _, tt := range []struct {
+		msg       string
+		err       error
+		expStatus int
+		expTitle  string
+		expDetail string
+	}{{
+		msg:       "board not found",
+		err:       ooohh.ErrBoardNotFound,
+		expStatus: http.StatusNotFound,
+		expTitle:  "Not Found",
+		expDetail: "Not Found",
+	}, {
+		msg:       "unknown error",
+		err:       errors.New("uh-oh"),
+		expStatus: http.StatusInternalServerError,
+		expTitle:  "Internal Server Error",
+		expDetail: "Could not retrieve board",
+	}} {
+
+		t.Run(tt.msg, func(t *testing.T) {
+
+			is := is.New(t)
+
+			// Create a mock service, with GetBoard implemented.
+			s := &mock.Service{
+				GetBoardFn: func(ctx context.Context, id ooohh.BoardID) (*ooohh.Board, error) {
+					return nil, tt.err
+				},
+			}
+
+			// Get an API.
+			a := NewAPI(logger, s)
+
+			// Create a new request.
+			r, err := newRequest("GET", "/api/boards/:id", nil, httprouter.Params{{Key: "id", Value: "1234"}})
+			is.NoErr(err)
+
+			// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+			rr := httptest.NewRecorder()
+
+			// Invoke the get board handler.
+			a.getBoard().ServeHTTP(rr, r)
+
+			// Check that the GetBoard function has been invoked.
+			is.True(s.GetBoardInvoked)
+
+			// Check the response status code is correct.
+			is.Equal(rr.Code, tt.expStatus)
+
+			// Check the response body is correct
+			type body struct {
+				Title  string `json:"title"`
+				Detail string `json:"detail"`
+			}
+			var actualBody body
+			err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+			is.NoErr(err) // actual body is json.
+
+			is.Equal(actualBody.Title, tt.expTitle)   // title is correct.
+			is.Equal(actualBody.Detail, tt.expDetail) // detail is correct.
+		})
+	}
 
 }
 
