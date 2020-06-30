@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/dlmiddlecote/ooohh"
 	"github.com/matryer/is"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
+
+	"github.com/dlmiddlecote/ooohh"
 )
 
 // now is the mocked time for tests
@@ -20,7 +21,7 @@ var now = time.Date(2020, time.February, 15, 0, 0, 0, 0, time.UTC)
 
 // newTmpBoltDB return a bolt db instance backed by a new temporary file.
 // It returns a function that should be called to cleanup the db.
-func newTmpBoltDB(t *testing.T) (*bolt.DB, func() error) {
+func newTmpBoltDB(t *testing.T) (*bolt.DB, func()) {
 	// Get temporary filename.
 	f, err := ioutil.TempFile("", "ooohh-bolt-")
 	if err != nil {
@@ -34,8 +35,8 @@ func newTmpBoltDB(t *testing.T) (*bolt.DB, func() error) {
 		t.Fatal(err)
 	}
 
-	cleanup := func() error {
-		return os.Remove(f.Name())
+	cleanup := func() {
+		os.Remove(f.Name()) //nolint:errcheck
 	}
 
 	return db, cleanup
@@ -53,7 +54,7 @@ func TestBoltServiceIsOoohhService(t *testing.T) {
 
 	is := is.New(t)
 
-	var i interface{} = new(service)
+	var i interface{} = &service{}
 	_, ok := i.(ooohh.Service)
 	is.True(ok) // bolt service is ooohh service.
 }
