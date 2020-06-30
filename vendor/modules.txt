@@ -11,7 +11,7 @@ github.com/blendle/zapdriver
 github.com/boltdb/bolt
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
-# github.com/dlmiddlecote/kit v0.3.0
+# github.com/dlmiddlecote/kit v0.3.1
 ## explicit
 github.com/dlmiddlecote/kit/api
 # github.com/golang/protobuf v1.4.0
@@ -21,6 +21,7 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 # github.com/julienschmidt/httprouter v1.3.0
+## explicit
 github.com/julienschmidt/httprouter
 # github.com/matryer/is v1.3.0
 ## explicit
