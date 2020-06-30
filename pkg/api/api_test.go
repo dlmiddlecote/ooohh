@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,13 +12,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dlmiddlecote/kit/api"
 	"github.com/julienschmidt/httprouter"
 	"github.com/matryer/is"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 
-	"github.com/dlmiddlecote/kit/api"
 	"github.com/dlmiddlecote/ooohh"
 	"github.com/dlmiddlecote/ooohh/pkg/mock"
 )
@@ -363,6 +364,281 @@ func TestGetDialErrors(t *testing.T) {
 }
 
 func TestSetDial(t *testing.T) {
+
+	now := time.Now().Truncate(time.Second)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	for _, tt := range []struct {
+		msg   string
+		value float64
+	}{{
+		msg:   "non-zero value",
+		value: 66.6,
+	}, {
+		msg:   "zero value",
+		value: 0,
+	}} {
+
+		t.Run(tt.msg, func(t *testing.T) {
+
+			is := is.New(t)
+
+			// Variables that will be assigned to within the SetDial function.
+			var setID ooohh.DialID
+			var setToken string
+			var setValue *float64
+
+			// Create a mock service, with GetDial and SetDial implemented.
+			s := &mock.Service{
+				SetDialFn: func(ctx context.Context, id ooohh.DialID, token string, value float64) error {
+
+					// Capture what was set.
+					setID = id
+					setToken = token
+					setValue = &value
+
+					return nil
+				},
+				GetDialFn: func(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, error) {
+					return &ooohh.Dial{
+						ID:        id,
+						Token:     setToken,
+						Name:      "test",
+						Value:     *setValue,
+						UpdatedAt: now,
+					}, nil
+				},
+			}
+
+			// Get an API.
+			a := NewAPI(logger, s)
+
+			// Create a new request.
+			r, err := newRequest("PATCH", "/api/dials/:id", strings.NewReader(fmt.Sprintf(`{"token": "token", "value": %f}`, tt.value)), httprouter.Params{{Key: "id", Value: "1234"}})
+			is.NoErr(err)
+
+			// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+			rr := httptest.NewRecorder()
+
+			// Invoke the get dial handler.
+			a.setDialValue().ServeHTTP(rr, r)
+
+			// Check that the SetDial function has been invoked.
+			is.True(s.SetDialInvoked)
+
+			// Check that the SetDial function was invoked with the correct params.
+			is.Equal(setID, ooohh.DialID("1234")) // correct dial was set.
+			is.Equal(setToken, "token")           // correct token was used for the set.
+			is.True(setValue != nil)              // value was set.
+			if setValue != nil {
+				is.Equal(*setValue, tt.value) // correct value was set.
+			}
+
+			// Check that the GetDial function has been invoked.
+			is.True(s.GetDialInvoked)
+
+			// Check the response status code is correct.
+			is.Equal(rr.Code, http.StatusOK)
+
+			// Check the response body is correct
+			var actualBody ooohh.Dial
+			err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+			is.NoErr(err) // actual body is json.
+
+			is.Equal(actualBody.ID, ooohh.DialID("1234"))     // id is correct.
+			is.Equal(actualBody.Name, "test")                 // name is correct.
+			is.Equal(actualBody.Value, tt.value)              // value is correct.
+			is.Equal(actualBody.UpdatedAt.Unix(), now.Unix()) // updated at time is correct.
+			is.Equal(actualBody.Token, "")                    // token is not in response body.
+		})
+	}
+
+}
+
+func TestSetDialValidation(t *testing.T) {
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create a mock service.
+	s := &mock.Service{}
+
+	// Get an API.
+	a := NewAPI(logger, s)
+
+	for _, tt := range []struct {
+		msg       string
+		body      string
+		expTitle  string
+		expDetail string
+	}{{
+		msg:       "invalid json body",
+		body:      `{"value": 66.6, "token": "token"`,
+		expTitle:  "Validation Error",
+		expDetail: "Invalid JSON",
+	}, {
+		msg:       "missing value",
+		body:      `{"token": "token"}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `token` and `value` must be provided.",
+	}, {
+		msg:       "missing token",
+		body:      `{"value": 66.6}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `token` and `value` must be provided.",
+	}, {
+		msg:       "missing value & token",
+		body:      `{}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `token` and `value` must be provided.",
+	}, {
+		msg:       "extra field passed",
+		body:      `{"extra": "field"}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `token` and `value` must be provided.",
+	}} {
+
+		t.Run(tt.msg, func(t *testing.T) {
+
+			is := is.New(t)
+
+			// Create a new request.
+			r, err := newRequest("PATCH", "/api/dials/:id", strings.NewReader(tt.body), httprouter.Params{{Key: "id", Value: "1234"}})
+			is.NoErr(err)
+
+			// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+			rr := httptest.NewRecorder()
+
+			// Invoke the create dial handler.
+			a.setDialValue().ServeHTTP(rr, r)
+
+			// Check that the SetDial function has not been invoked.
+			is.True(!s.SetDialInvoked)
+
+			// Check the response status code is correct.
+			is.Equal(rr.Code, http.StatusBadRequest)
+
+			// Check the response body is correct
+			type body struct {
+				Title  string `json:"title"`
+				Detail string `json:"detail"`
+			}
+			var actualBody body
+			err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+			is.NoErr(err) // actual body is json.
+
+			is.Equal(actualBody.Title, tt.expTitle)   // title is correct.
+			is.Equal(actualBody.Detail, tt.expDetail) // detail is correct.
+		})
+	}
+}
+
+func TestSetDialErrors(t *testing.T) {
+
+	now := time.Now().Truncate(time.Second)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	for _, tt := range []struct {
+		msg           string
+		setErr        error
+		getErr        error
+		expGetInvoked bool
+		expStatus     int
+		expTitle      string
+		expDetail     string
+	}{{
+		msg:           "set with wrong token",
+		setErr:        ooohh.ErrUnauthorized,
+		getErr:        nil,
+		expGetInvoked: false,
+		expStatus:     http.StatusUnauthorized,
+		expTitle:      "Unauthorized",
+		expDetail:     "Invalid token",
+	}, {
+		msg:           "set with missing dial",
+		setErr:        ooohh.ErrDialNotFound,
+		getErr:        ooohh.ErrDialNotFound,
+		expGetInvoked: false,
+		expStatus:     http.StatusNotFound,
+		expTitle:      "Not Found",
+		expDetail:     "Not Found",
+	}, {
+		msg:           "set with unknown error",
+		setErr:        errors.New("set error"),
+		getErr:        nil,
+		expGetInvoked: false,
+		expStatus:     http.StatusInternalServerError,
+		expTitle:      "Internal Server Error",
+		expDetail:     "Could not update dial",
+	}, {
+		msg:           "get with unknown error",
+		setErr:        nil,
+		getErr:        errors.New("get error"),
+		expGetInvoked: true,
+		expStatus:     http.StatusInternalServerError,
+		expTitle:      "Internal Server Error",
+		expDetail:     "Could not update dial",
+	}} {
+
+		t.Run(tt.msg, func(t *testing.T) {
+
+			is := is.New(t)
+
+			// Create a mock service, with GetDial and SetDial implemented.
+			s := &mock.Service{
+				SetDialFn: func(ctx context.Context, id ooohh.DialID, token string, value float64) error {
+					return tt.setErr
+				},
+				GetDialFn: func(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, error) {
+					return &ooohh.Dial{
+						ID:        id,
+						Token:     "token",
+						Name:      "test",
+						Value:     66.6,
+						UpdatedAt: now,
+					}, tt.getErr
+				},
+			}
+
+			// Get an API.
+			a := NewAPI(logger, s)
+
+			// Create a new request.
+			r, err := newRequest("PATCH", "/api/dials/:id", strings.NewReader(`{"token": "token", "value": 66.6}`), httprouter.Params{{Key: "id", Value: "1234"}})
+			is.NoErr(err)
+
+			// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+			rr := httptest.NewRecorder()
+
+			// Invoke the get dial handler.
+			a.setDialValue().ServeHTTP(rr, r)
+
+			// Check that the SetDial function has been invoked.
+			is.True(s.SetDialInvoked)
+
+			// Check that the GetDial function has (not) been invoked.
+			is.Equal(s.GetDialInvoked, tt.expGetInvoked)
+
+			// Check the response status code is correct.
+			is.Equal(rr.Code, tt.expStatus)
+
+			// Check the response body is correct
+			type body struct {
+				Title  string `json:"title"`
+				Detail string `json:"detail"`
+			}
+			var actualBody body
+			err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+			is.NoErr(err) // actual body is json.
+
+			is.Equal(actualBody.Title, tt.expTitle)   // title is correct.
+			is.Equal(actualBody.Detail, tt.expDetail) // detail is correct.
+		})
+	}
 
 }
 

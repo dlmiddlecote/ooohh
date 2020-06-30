@@ -149,13 +149,8 @@ func (a *ooohhAPI) setDialValue() http.Handler {
 
 		d, err := a.s.GetDial(r.Context(), id)
 		if err != nil {
-			if errors.Is(err, ooohh.ErrDialNotFound) {
-				api.NotFound(w, r)
-				return
-			}
-
 			a.logger.Errorw("could not retrieve dial", "err", err, "id", id)
-			api.Problem(w, r, "Internal Server Error", "Could not retrieve dial", http.StatusInternalServerError)
+			api.Problem(w, r, "Internal Server Error", "Could not update dial", http.StatusInternalServerError)
 			return
 		}
 

@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/dlmiddlecote/ooohh"
 	"github.com/matryer/is"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
+
+	"github.com/dlmiddlecote/ooohh"
 )
 
 // now is the mocked time for tests
