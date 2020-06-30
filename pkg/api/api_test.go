@@ -42,6 +42,15 @@ func newRequest(method, path string, body io.Reader, params httprouter.Params) (
 	return r, nil
 }
 
+func TestOoohhAPIIsKitAPI(t *testing.T) {
+
+	is := is.New(t)
+
+	var i interface{} = &ooohhAPI{}
+	_, ok := i.(api.API)
+	is.True(ok) // ooohh api is kit api.
+}
+
 func TestCreateDial(t *testing.T) {
 
 	is := is.New(t)
@@ -644,6 +653,191 @@ func TestSetDialErrors(t *testing.T) {
 
 func TestCreateBoard(t *testing.T) {
 
+	is := is.New(t)
+
+	now := time.Now().Truncate(time.Second)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create a mock service, with CreateBoard implemented.
+	s := &mock.Service{
+		CreateBoardFn: func(ctx context.Context, name string, token string) (*ooohh.Board, error) {
+			return &ooohh.Board{
+				ID:        ooohh.BoardID("board"),
+				Token:     token,
+				Name:      name,
+				Dials:     []ooohh.Dial{},
+				UpdatedAt: now,
+			}, nil
+		},
+	}
+
+	// Get an API.
+	a := NewAPI(logger, s)
+
+	// Create a new request.
+	r, err := http.NewRequest("POST", "/api/boards", strings.NewReader(`{"name": "test", "token": "token"}`))
+	is.NoErr(err)
+
+	// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+	rr := httptest.NewRecorder()
+
+	// Invoke the create board handler.
+	a.createBoard().ServeHTTP(rr, r)
+
+	// Check that the CreateBoard function has been invoked.
+	is.True(s.CreateBoardInvoked)
+
+	// Check the response status code is correct.
+	is.Equal(rr.Code, http.StatusCreated)
+
+	// Check the response body is correct
+	var actualBody ooohh.Board
+	err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+	is.NoErr(err) // actual body is json.
+
+	is.Equal(actualBody.ID, ooohh.BoardID("board"))   // id is the same.
+	is.Equal(actualBody.Name, "test")                 // name is the same.
+	is.Equal(actualBody.Dials, []ooohh.Dial{})        // dials are the same.
+	is.Equal(actualBody.UpdatedAt.Unix(), now.Unix()) // updated at time is the same.
+	is.Equal(actualBody.Token, "")                    // token is not in response body.
+}
+
+func TestCreateBoardValidation(t *testing.T) {
+
+	now := time.Now().Truncate(time.Second)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create a mock service, with CreateBoard implemented.
+	s := &mock.Service{
+		CreateBoardFn: func(ctx context.Context, name string, token string) (*ooohh.Board, error) {
+			return &ooohh.Board{
+				ID:        ooohh.BoardID("board"),
+				Token:     token,
+				Name:      name,
+				Dials:     []ooohh.Dial{},
+				UpdatedAt: now,
+			}, nil
+		},
+	}
+
+	// Get an API.
+	a := NewAPI(logger, s)
+
+	for _, tt := range []struct {
+		msg       string
+		body      string
+		expTitle  string
+		expDetail string
+	}{{
+		msg:       "invalid json body",
+		body:      `{"name": "test", "token": "token"`,
+		expTitle:  "Validation Error",
+		expDetail: "Invalid JSON",
+	}, {
+		msg:       "missing name",
+		body:      `{"token": "token"}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `name` and `token` must be provided.",
+	}, {
+		msg:       "missing token",
+		body:      `{"name": "test"}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `name` and `token` must be provided.",
+	}, {
+		msg:       "missing name & token",
+		body:      `{}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `name` and `token` must be provided.",
+	}, {
+		msg:       "extra field passed",
+		body:      `{"extra": "field"}`,
+		expTitle:  "Validation Error",
+		expDetail: "Both `name` and `token` must be provided.",
+	}} {
+
+		t.Run(tt.msg, func(t *testing.T) {
+
+			is := is.New(t)
+
+			// Create a new request.
+			r, err := http.NewRequest("POST", "/api/boards", strings.NewReader(tt.body))
+			is.NoErr(err)
+
+			// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+			rr := httptest.NewRecorder()
+
+			// Invoke the create board handler.
+			a.createBoard().ServeHTTP(rr, r)
+
+			// Check that the CreateBoard function has not been invoked.
+			is.True(!s.CreateBoardInvoked)
+
+			// Check the response status code is correct.
+			is.Equal(rr.Code, http.StatusBadRequest)
+
+			// Check the response body is correct
+			type body struct {
+				Title  string `json:"title"`
+				Detail string `json:"detail"`
+			}
+			var actualBody body
+			err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+			is.NoErr(err) // actual body is json.
+
+			is.Equal(actualBody.Title, tt.expTitle)   // title is correct.
+			is.Equal(actualBody.Detail, tt.expDetail) // detail is correct.
+		})
+	}
+}
+
+func TestCreateBoardError(t *testing.T) {
+
+	is := is.New(t)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create a mock service, with CreateBoard implemented, that returns an error.
+	s := &mock.Service{
+		CreateBoardFn: func(ctx context.Context, name string, token string) (*ooohh.Board, error) {
+			return nil, errors.New("error message")
+		},
+	}
+
+	// Get an API.
+	a := NewAPI(logger, s)
+
+	// Create a new request.
+	r, err := http.NewRequest("POST", "/api/boards", strings.NewReader(`{"name": "test", "token": "token"}`))
+	is.NoErr(err)
+
+	// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+	rr := httptest.NewRecorder()
+
+	// Invoke the create board handler.
+	a.createBoard().ServeHTTP(rr, r)
+
+	// Check that the CreateBoard function has been invoked.
+	is.True(s.CreateBoardInvoked)
+
+	// Check the response status code is correct.
+	is.Equal(rr.Code, http.StatusInternalServerError)
+
+	// Check the response body is correct
+	type body struct {
+		Title  string `json:"title"`
+		Detail string `json:"detail"`
+	}
+	var actualBody body
+	err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+	is.NoErr(err) // actual body is json.
+
+	is.Equal(actualBody.Title, "Internal Server Error")   // title is correct.
+	is.Equal(actualBody.Detail, "Could not create board") // detail is correct.
 }
 
 func TestGetBoard(t *testing.T) {
