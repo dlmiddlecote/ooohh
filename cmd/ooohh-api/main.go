@@ -51,6 +51,7 @@ func run() error {
 		DB struct {
 			Path string `conf:"default:/tmp/ooohh.db"`
 		}
+		Salt string `conf:"default:salt"`
 	}
 
 	// Parse configuration, showing usage if needed.
@@ -129,7 +130,7 @@ func run() error {
 		}
 
 		// Initialise our slack service.
-		ss, err := slack.NewService(logger.Named("slack"), db, s, "salt") // TODO
+		ss, err := slack.NewService(logger.Named("slack"), db, s, cfg.Salt)
 		if err != nil {
 			return errors.Wrap(err, "creating slack service")
 		}

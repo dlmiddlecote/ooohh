@@ -2,6 +2,7 @@ package slack
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -92,11 +93,15 @@ func TestSettingDial(t *testing.T) {
 	// Create logger.
 	logger, _ := newTestLogger(zap.InfoLevel)
 
+	// Variables that will be updated by the set dial function in the service.
+	var setID ooohh.DialID
+	var setValue *float64
+
 	// Create mock ooohh.Service.
 	ms := &mock.Service{
 		CreateDialFn: func(ctx context.Context, name string, token string) (*ooohh.Dial, error) {
 			return &ooohh.Dial{
-				ID:        ooohh.DialID("dial"),
+				ID:        ooohh.DialID(fmt.Sprintf("dial-%s", name)),
 				Name:      name,
 				Token:     token,
 				Value:     0.0,
@@ -104,6 +109,11 @@ func TestSettingDial(t *testing.T) {
 			}, nil
 		},
 		SetDialFn: func(ctx context.Context, id ooohh.DialID, token string, value float64) error {
+
+			// Capture set values.
+			setID = id
+			setValue = &value
+
 			return nil
 		},
 	}
@@ -115,6 +125,7 @@ func TestSettingDial(t *testing.T) {
 	ctx := context.TODO()
 
 	// Set dial for the first time.
+	// The dial should be created.
 	err = s.SetDialValue(ctx, "team", "user", 66.6)
 	is.NoErr(err) // setting dial succeeded.
 
@@ -124,12 +135,23 @@ func TestSettingDial(t *testing.T) {
 	// Check that SetDial was called on the service.
 	is.True(ms.SetDialInvoked) // dial value was set.
 
-	// TODO: Check values that were set etc.
+	// Check correct values were set.
+	is.True(setID != ooohh.DialID("")) // id is not empty.
+	is.True(setValue != nil)           // value was set.
+	if setValue != nil {
+		is.Equal(*setValue, 66.6) // correct value was set.
+	}
 
-	// Reset tracking of function invocations.
+	// Capture previous id.
+	createdID := setID
+
+	// Reset tracking of function invocations, and capturing vars.
 	ms.Reset()
+	setID = ooohh.DialID("")
+	setValue = nil
 
 	// Set the dial again.
+	// The dial should NOT be created.
 	err = s.SetDialValue(ctx, "team", "user", 10.0)
 	is.NoErr(err) // setting dial succeeded.
 
@@ -138,4 +160,52 @@ func TestSettingDial(t *testing.T) {
 
 	// Check that SetDial was called on the service.
 	is.True(ms.SetDialInvoked) // dial value was set.
+
+	// Check set values.
+	is.True(setID != ooohh.DialID("")) // id is not empty.
+	is.Equal(setID, createdID)         // id is the same as before.
+	is.True(setValue != nil)           // value was set.
+	if setValue != nil {
+		is.Equal(*setValue, 10.0) // correct value was set.
+	}
+
+	// Reset tracking of function invocations, and capturing vars.
+	ms.Reset()
+	setID = ooohh.DialID("")
+	setValue = nil
+
+	// Set the dial for a different user in the same team.
+	// The dial should be created.
+	err = s.SetDialValue(ctx, "team", "user2", 33.3)
+	is.NoErr(err) // setting dial succeeded.
+
+	// Check that CreateDial was called on the service.
+	is.True(ms.CreateDialInvoked) // dial was created.
+
+	// Check that SetDial was called on the service.
+	is.True(ms.SetDialInvoked) // dial value was set.
+
+	// Check that the dial id is different for this new user.
+	is.True(setID != ooohh.DialID("")) // id is not empty.
+	is.True(setID != createdID)        // new dial id is different for different users.
+
+	// Reset tracking of function invocations, and capturing vars.
+	ms.Reset()
+	setID = ooohh.DialID("")
+	setValue = nil
+
+	// Set the dial for the same user on a different team.
+	// The dial should be created.
+	err = s.SetDialValue(ctx, "team2", "user", 50.0)
+	is.NoErr(err) // setting dial succeeded.
+
+	// Check that CreateDial was called on the service.
+	is.True(ms.CreateDialInvoked) // dial was created.
+
+	// Check that SetDial was called on the service.
+	is.True(ms.SetDialInvoked) // dial value was set.
+
+	// Check that the dial id is different for this new user.
+	is.True(setID != ooohh.DialID("")) // id is not empty.
+	is.True(setID != createdID)        // new dial id is different for different teams.
 }
