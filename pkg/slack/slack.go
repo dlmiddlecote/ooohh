@@ -32,7 +32,7 @@ func NewService(logger *zap.SugaredLogger, db *bolt.DB, s ooohh.Service) (*servi
 	if err != nil {
 		return nil, errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	if _, err := txn.CreateBucketIfNotExists([]byte("slack_users")); err != nil {
 		return nil, errors.Wrap(err, "creating slack_users bucket")
@@ -52,7 +52,7 @@ func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value
 	if err != nil {
 		return errors.Wrap(err, "starting read transaction")
 	}
-	defer rtxn.Rollback()
+	defer rtxn.Rollback() //nolint:errcheck
 
 	// Try to retrieve the dial identifier for this user.
 	var dialID ooohh.DialID
@@ -73,7 +73,7 @@ func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value
 		if err != nil {
 			return errors.Wrap(err, "starting rw transaction")
 		}
-		defer rwtxn.Rollback()
+		defer rwtxn.Rollback() //nolint:errcheck
 
 		// Store user -> dial mapping.
 		err = rwtxn.Bucket([]byte("slack_users")).Put([]byte(key), []byte(dialID))
