@@ -19,6 +19,7 @@ import (
 
 	"github.com/dlmiddlecote/ooohh/pkg/api"
 	"github.com/dlmiddlecote/ooohh/pkg/service"
+	"github.com/dlmiddlecote/ooohh/pkg/slack"
 )
 
 const (
@@ -50,6 +51,7 @@ func run() error {
 		DB struct {
 			Path string `conf:"default:/tmp/ooohh.db"`
 		}
+		Salt string `conf:"default:salt"`
 	}
 
 	// Parse configuration, showing usage if needed.
@@ -127,10 +129,16 @@ func run() error {
 			return errors.Wrap(err, "creating service")
 		}
 
+		// Initialise our slack service.
+		ss, err := slack.NewService(logger.Named("slack"), db, s, cfg.Salt)
+		if err != nil {
+			return errors.Wrap(err, "creating slack service")
+		}
+
 		// Create our API. This is an implementation of the kit API.
 		// It has a dependency on the ooohh service, as it provides this service as a
 		// HTTP API.
-		oApi := api.NewAPI(logger.Named("api"), s)
+		oApi := api.NewAPI(logger.Named("api"), s, ss)
 
 		// Create our http.Server, exposing the account API on the given host.
 		app = kitapi.NewServer(cfg.Web.APIHost, logger.Named("http"), oApi)
