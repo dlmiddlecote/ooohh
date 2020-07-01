@@ -46,44 +46,49 @@ func NewService(logger *zap.SugaredLogger, db *bolt.DB, s ooohh.Service, salt st
 // SetDialValue updates the given user's dial value.
 func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value float64) error {
 
-	key := fmt.Sprintf("%s||%s", teamID, userID)
+	key := fmt.Sprintf("%s:%s", teamID, userID)
 	token := generateToken(key, s.salt)
 
-	// start a read-write transaction
-	txn, err := s.db.Begin(true)
-	if err != nil {
-		return errors.Wrap(err, "starting rw transaction")
-	}
-	defer txn.Rollback() //nolint:errcheck
-
 	// Try to retrieve the dial identifier for this user.
-	var dialID ooohh.DialID
-	if v := txn.Bucket([]byte("slack_users")).Get([]byte(key)); v != nil {
-		// Dial ID found, convert.
-		dialID = ooohh.DialID(v)
-	} else {
-		// User doesn't exist, create a dial.
+	var dialID *ooohh.DialID
+	err := s.db.View(func(txn *bolt.Tx) error {
+		if v := txn.Bucket([]byte("slack_users")).Get([]byte(key)); v != nil {
+			d := ooohh.DialID(v)
+			dialID = &d
+		}
+
+		return nil
+	})
+	if err != nil {
+		return errors.Wrap(err, "finding existing dial")
+	}
+
+	// If the dialID wasn't set before, create a new dial.
+	if dialID == nil {
 		dial, err := s.s.CreateDial(ctx, key, token)
 		if err != nil {
 			return errors.Wrap(err, "creating board")
 		}
 
-		dialID = dial.ID
-
 		// Store user -> dial mapping.
-		err = txn.Bucket([]byte("slack_users")).Put([]byte(key), []byte(dialID))
+		err = s.db.Update(func(txn *bolt.Tx) error {
+			err := txn.Bucket([]byte("slack_users")).Put([]byte(key), []byte(dial.ID))
+			if err != nil {
+				return errors.Wrap(err, "storing user to dial mapping")
+			}
+
+			return nil
+		})
 		if err != nil {
-			return errors.Wrap(err, "storing user to dial mapping")
+			return errors.Wrap(err, "storing dial mapping")
 		}
 
-		err = txn.Commit()
-		if err != nil {
-			return errors.Wrap(err, "committing user to dial mapping")
-		}
+		// Capture dial ID
+		dialID = &dial.ID
 	}
 
 	// Update dial value.
-	err = s.s.SetDial(ctx, dialID, token, value)
+	err = s.s.SetDial(ctx, *dialID, token, value)
 	if err != nil {
 		return errors.Wrap(err, "setting dial value")
 	}
@@ -93,7 +98,7 @@ func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value
 
 func generateToken(key, salt string) string {
 	// Append salt
-	key = fmt.Sprintf("%s||%s", key, salt)
+	key = fmt.Sprintf("%s:%s", key, salt)
 
 	// base64 encode key
 	e := base64.StdEncoding.EncodeToString([]byte(key))
