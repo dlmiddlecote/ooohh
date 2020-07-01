@@ -79,7 +79,7 @@ func run() error {
 		}
 	}
 	// Flush logs at the end of the applications lifetime
-	defer logger.Sync()
+	defer logger.Sync() //nolint:errcheck
 
 	logger.Infow("Application starting", "version", buildVersion)
 	defer logger.Info("Application finished")

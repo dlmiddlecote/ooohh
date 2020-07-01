@@ -149,13 +149,8 @@ func (a *ooohhAPI) setDialValue() http.Handler {
 
 		d, err := a.s.GetDial(r.Context(), id)
 		if err != nil {
-			if errors.Is(err, ooohh.ErrDialNotFound) {
-				api.NotFound(w, r)
-				return
-			}
-
 			a.logger.Errorw("could not retrieve dial", "err", err, "id", id)
-			api.Problem(w, r, "Internal Server Error", "Could not retrieve dial", http.StatusInternalServerError)
+			api.Problem(w, r, "Internal Server Error", "Could not update dial", http.StatusInternalServerError)
 			return
 		}
 
@@ -260,13 +255,8 @@ func (a *ooohhAPI) setBoardDials() http.Handler {
 
 		b, err := a.s.GetBoard(r.Context(), id)
 		if err != nil {
-			if errors.Is(err, ooohh.ErrBoardNotFound) {
-				api.NotFound(w, r)
-				return
-			}
-
 			a.logger.Errorw("could not retrieve board", "err", err, "id", id)
-			api.Problem(w, r, "Internal Server Error", "Could not retrieve board", http.StatusInternalServerError)
+			api.Problem(w, r, "Internal Server Error", "Could not update board", http.StatusInternalServerError)
 			return
 		}
 

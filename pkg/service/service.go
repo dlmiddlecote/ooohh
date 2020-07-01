@@ -26,7 +26,7 @@ func NewService(db *bolt.DB, logger *zap.SugaredLogger, now func() time.Time) (*
 	if err != nil {
 		return nil, errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	if _, err := txn.CreateBucketIfNotExists([]byte("dials")); err != nil {
 		return nil, errors.Wrap(err, "creating dials bucket")
@@ -50,7 +50,7 @@ func (s *service) CreateDial(ctx context.Context, name, token string) (*ooohh.Di
 	if err != nil {
 		return nil, errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	d := ooohh.Dial{
 		ID:        id,
@@ -77,7 +77,7 @@ func (s *service) GetDial(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, er
 	if err != nil {
 		return nil, errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	var d ooohh.Dial
 	if v := txn.Bucket([]byte("dials")).Get([]byte(id)); v == nil {
@@ -101,7 +101,7 @@ func (s *service) SetDial(ctx context.Context, id ooohh.DialID, token string, va
 	if err != nil {
 		return errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	bkt := txn.Bucket([]byte("dials"))
 
@@ -142,7 +142,7 @@ func (s *service) CreateBoard(ctx context.Context, name, token string) (*ooohh.B
 	if err != nil {
 		return nil, errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	b := ooohh.Board{
 		ID:        id,
@@ -169,7 +169,7 @@ func (s *service) GetBoard(ctx context.Context, id ooohh.BoardID) (*ooohh.Board,
 	if err != nil {
 		return nil, errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	var b ooohh.Board
 	if v := txn.Bucket([]byte("boards")).Get([]byte(id)); v == nil {
@@ -207,7 +207,7 @@ func (s *service) SetBoard(ctx context.Context, id ooohh.BoardID, token string, 
 	if err != nil {
 		return errors.Wrap(err, "beginning transaction")
 	}
-	defer txn.Rollback()
+	defer txn.Rollback() //nolint:errcheck
 
 	bkt := txn.Bucket([]byte("boards"))
 
