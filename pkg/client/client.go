@@ -30,14 +30,6 @@ type (
 		Token string  `json:"token"`
 		Value float64 `json:"value"`
 	}
-	createBoardRequest struct {
-		Name  string `json:"name"`
-		Token string `json:"token"`
-	}
-	setBoardRequest struct {
-		Token string   `json:"token"`
-		Dials []string `json:"dials"`
-	}
 	problemResponse struct {
 		Title  string `json:"title"`
 		Detail string `json:"detail"`

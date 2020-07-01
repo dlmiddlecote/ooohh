@@ -123,7 +123,7 @@ func run(a []string, stdout, stderr io.Writer) error {
 		}
 	}
 	// Flush logs at the end of the applications lifetime
-	defer logger.Sync()
+	defer logger.Sync() //nolint:errcheck
 
 	s := client.NewClient(base, logger)
 
