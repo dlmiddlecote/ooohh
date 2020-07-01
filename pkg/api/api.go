@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/dlmiddlecote/kit/api"
 	"github.com/dlmiddlecote/ooohh/pkg/slack"
@@ -62,10 +61,9 @@ func (a *ooohhAPI) Endpoints() []api.Endpoint {
 			Handler: a.setBoardDials(),
 		},
 		{
-			Method:      "POST",
-			Path:        "/api/slack/command",
-			Handler:     a.slackCommand(),
-			Middlewares: []api.Middleware{timeout(2 * time.Second)},
+			Method:  "POST",
+			Path:    "/api/slack/command",
+			Handler: a.slackCommand(),
 		},
 	}
 }
