@@ -67,6 +67,16 @@ func (s *Service) SetBoard(ctx context.Context, id ooohh.BoardID, token string, 
 	return s.SetBoardFn(ctx, id, token, dials)
 }
 
+// Reset undoes the tracking of function invocations.
+func (s *Service) Reset() {
+	s.CreateDialInvoked = false
+	s.GetDialInvoked = false
+	s.SetDialInvoked = false
+	s.CreateBoardInvoked = false
+	s.GetBoardInvoked = false
+	s.SetBoardInvoked = false
+}
+
 // SlackService provides a mock slack.Service.
 type SlackService struct {
 	SetDialValueFn      func(ctx context.Context, teamID, userID string, value float64) error

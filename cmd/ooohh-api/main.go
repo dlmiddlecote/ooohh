@@ -129,7 +129,7 @@ func run() error {
 		}
 
 		// Initialise our slack service.
-		ss, err := slack.NewService(logger.Named("slack"), db, s)
+		ss, err := slack.NewService(logger.Named("slack"), db, s, "salt") // TODO
 		if err != nil {
 			return errors.Wrap(err, "creating slack service")
 		}
