@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -336,6 +337,24 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 			api.Respond(w, r, http.StatusOK, response{
 				Type: "ephemeral",
 				Text: "Please supply a single number as your WTF level.",
+			})
+			return
+		}
+
+		// Check number isn't NaN value.
+		if math.IsNaN(value) {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Sneaky. Please supply a _number_ as your WTF level.",
+			})
+			return
+		}
+
+		// Check number isn't infinite.
+		if math.IsInf(value, 1) || math.IsInf(value, -1) {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Definitely seek out help! Unfortunately, I only go up to 100.",
 			})
 			return
 		}
