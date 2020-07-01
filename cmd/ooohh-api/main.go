@@ -29,13 +29,6 @@ const (
 	namespace = "OOOHH"
 )
 
-const (
-	// buildVersion is the git version of this program. It is set using build flags.
-	buildVersion = "dev"
-	// namespace is the prefix used for application configuration.
-	namespace = "OOOHH"
-)
-
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stdout, "error: %v", err)
@@ -87,7 +80,7 @@ func run() error {
 		}
 	}
 	// Flush logs at the end of the applications lifetime
-  defer logger.Sync() //nolint:errcheck
+	defer logger.Sync() //nolint:errcheck
 
 	logger.Infow("Application starting", "version", buildVersion)
 	defer logger.Info("Application finished")
