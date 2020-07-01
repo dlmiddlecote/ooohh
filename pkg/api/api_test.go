@@ -23,6 +23,7 @@ import (
 
 	"github.com/dlmiddlecote/ooohh"
 	"github.com/dlmiddlecote/ooohh/pkg/mock"
+	"github.com/dlmiddlecote/ooohh/pkg/slack"
 )
 
 // newTestLogger returns a logger usable in tests, and also a struct that captures log lines
@@ -1339,11 +1340,12 @@ func TestSlackCommand(t *testing.T) {
 		expType           string
 		expText           string
 		expServiceInvoked bool
+		expGetInvoked     bool
 	}{{
 		msg:               "help command",
 		text:              "help",
 		expType:           "ephemeral",
-		expText:           "Use the following format to set a value: `/wtf value`",
+		expText:           "Use the following format to set a value: `/wtf <number>`",
 		expServiceInvoked: false,
 	}, {
 		msg:               "low level",
@@ -1369,6 +1371,13 @@ func TestSlackCommand(t *testing.T) {
 		expType:           "ephemeral",
 		expText:           "Ooohh, make sure you check in with someone, maybe they can help.",
 		expServiceInvoked: true,
+	}, {
+		msg:               "query command",
+		text:              "?",
+		expType:           "ephemeral",
+		expText:           "Your dial (id) is set to 10.0.",
+		expServiceInvoked: false,
+		expGetInvoked:     true,
 	}, {
 		msg:               "empty command",
 		text:              "",
@@ -1415,6 +1424,15 @@ func TestSlackCommand(t *testing.T) {
 				SetDialValueFn: func(ctx context.Context, teamID, userID string, value float64) error {
 					return nil
 				},
+				GetDialFn: func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {
+					return &ooohh.Dial{
+						ID:        ooohh.DialID("id"),
+						Name:      "dial",
+						Token:     "token",
+						Value:     10.0,
+						UpdatedAt: time.Now(),
+					}, nil
+				},
 			}
 
 			// Get an API.
@@ -1441,8 +1459,11 @@ func TestSlackCommand(t *testing.T) {
 			// Check the response status code is correct.
 			is.Equal(rr.Code, http.StatusOK)
 
-			// Check the slack service was (was not) invoked as expected.
+			// Check the slack service was/was not invoked as expected.
 			is.Equal(ss.SetDialValueInvoked, tt.expServiceInvoked)
+
+			// Check the GetDial method of the slack service was/was not invoked as expected.
+			is.Equal(ss.GetDialInvoked, tt.expGetInvoked)
 
 			// Check the response body is correct.
 			type body struct {
@@ -1501,6 +1522,65 @@ func TestSlackCommandServiceError(t *testing.T) {
 
 	// Check the slack service was invoked.
 	is.True(ss.SetDialValueInvoked)
+
+	// Check the response body is correct.
+	type body struct {
+		Type string `json:"response_type"`
+		Text string `json:"text"`
+	}
+	var actualBody body
+	err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+	is.NoErr(err) // actual body is json.
+
+	is.Equal(actualBody.Type, "ephemeral")                                                 // type is correct.
+	is.Equal(actualBody.Text, "Oops, something didn't quite work out. Please, try again.") // text is correct.
+}
+
+func TestSlackCommandGetDialError(t *testing.T) {
+	is := is.New(t)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create a mock service.
+	s := &mock.Service{}
+
+	// Create a mock slack service.
+	ss := &mock.SlackService{
+		GetDialFn: func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {
+			return nil, errors.New("uh-oh")
+		},
+	}
+
+	// Get an API.
+	a := NewAPI(logger, s, ss)
+
+	// Create a new request.
+	formData := url.Values{
+		"command": {"/wtf"},
+		"user_id": {"user"},
+		"team_id": {"team"},
+		"text":    {"?"},
+	}
+	r, err := http.NewRequest("POST", "/api/slack/command", strings.NewReader(formData.Encode()))
+	is.NoErr(err)
+
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+	rr := httptest.NewRecorder()
+
+	// Invoke the slack command handler.
+	a.slackCommand().ServeHTTP(rr, r)
+
+	// Check the response status code is correct.
+	is.Equal(rr.Code, http.StatusOK)
+
+	// Check the slack get dial was invoked.
+	is.True(ss.GetDialInvoked)
+
+	// Check the slack set dial wasn't invoked.
+	is.True(!ss.SetDialValueInvoked)
 
 	// Check the response body is correct.
 	type body struct {
@@ -1686,4 +1766,63 @@ func TestSlackCommandInvalidForm(t *testing.T) {
 
 	is.Equal(actualBody.Title, "Invalid Request")       // title is correct.
 	is.Equal(actualBody.Detail, "Could not parse form") // detail is correct.
+}
+
+func TestSlackCommandQueryWithoutPriorSet(t *testing.T) {
+	is := is.New(t)
+
+	// Get a logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create a mock service.
+	s := &mock.Service{}
+
+	// Create a mock slack service.
+	ss := &mock.SlackService{
+		GetDialFn: func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {
+			return nil, slack.ErrDialNotFound
+		},
+	}
+
+	// Get an API.
+	a := NewAPI(logger, s, ss)
+
+	// Create a new request.
+	formData := url.Values{
+		"command": {"/wtf"},
+		"user_id": {"user"},
+		"team_id": {"team"},
+		"text":    {"?"},
+	}
+	r, err := http.NewRequest("POST", "/api/slack/command", strings.NewReader(formData.Encode()))
+	is.NoErr(err)
+
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// Create a response recorder, which satisfies http.ResponseWriter, to record the response.
+	rr := httptest.NewRecorder()
+
+	// Invoke the slack command handler.
+	a.slackCommand().ServeHTTP(rr, r)
+
+	// Check the response status code is correct.
+	is.Equal(rr.Code, http.StatusOK)
+
+	// Check the slack get service was invoked.
+	is.True(ss.GetDialInvoked)
+
+	// Check the slack set service was not invoked.
+	is.True(!ss.SetDialValueInvoked)
+
+	// Check the response body is correct.
+	type body struct {
+		Type string `json:"response_type"`
+		Text string `json:"text"`
+	}
+	var actualBody body
+	err = json.Unmarshal(rr.Body.Bytes(), &actualBody)
+	is.NoErr(err) // actual body is json.
+
+	is.Equal(actualBody.Type, "ephemeral")                                                // type is correct.
+	is.Equal(actualBody.Text, "Use the following format to set a value: `/wtf <number>`") // text is correct.
 }
