@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -326,7 +327,32 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 		if t == "help" {
 			api.Respond(w, r, http.StatusOK, response{
 				Type: "ephemeral",
-				Text: "Use the following format to set a value: `/wtf value`",
+				Text: "Use the following format to set a value: `/wtf <number>`",
+			})
+			return
+		}
+
+		// Query for value.
+		if t == "?" {
+			d, err := a.ss.GetDial(r.Context(), body.TeamID, body.UserID)
+			if err != nil {
+
+				// Calculate the response text based on the error value.
+				text := "Oops, something didn't quite work out. Please, try again."
+				if errors.Is(err, slack.ErrDialNotFound) {
+					text = "Use the following format to set a value: `/wtf <number>`"
+				}
+
+				api.Respond(w, r, http.StatusOK, response{
+					Type: "ephemeral",
+					Text: text,
+				})
+				return
+			}
+
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: fmt.Sprintf("Your dial (%s) is set to %.1f.", d.ID, d.Value),
 			})
 			return
 		}

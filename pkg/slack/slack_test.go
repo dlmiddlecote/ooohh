@@ -2,6 +2,7 @@ package slack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -208,4 +209,154 @@ func TestSettingDial(t *testing.T) {
 	// Check that the dial id is different for this new user.
 	is.True(setID != ooohh.DialID("")) // id is not empty.
 	is.True(setID != createdID)        // new dial id is different for different teams.
+}
+
+func TestGettingDial(t *testing.T) {
+
+	is := is.New(t)
+
+	// Get a Bolt DB.
+	db, cleanup := newTmpBoltDB(t)
+	defer cleanup()
+
+	// Create logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Variables that will be updated by the set/get dial functions in the service.
+	var setID ooohh.DialID
+	var setValue *float64
+	var getID ooohh.DialID
+
+	// Create mock ooohh.Service.
+	ms := &mock.Service{
+		CreateDialFn: func(ctx context.Context, name string, token string) (*ooohh.Dial, error) {
+			return &ooohh.Dial{
+				ID:        ooohh.DialID(fmt.Sprintf("dial-%s", name)),
+				Name:      name,
+				Token:     token,
+				Value:     0.0,
+				UpdatedAt: time.Now(),
+			}, nil
+		},
+		SetDialFn: func(ctx context.Context, id ooohh.DialID, token string, value float64) error {
+			// Capture values.
+			setID = id
+			setValue = &value
+
+			return nil
+		},
+		GetDialFn: func(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, error) {
+			// Capture id.
+			getID = id
+
+			return &ooohh.Dial{
+				ID:        id,
+				Name:      "name",
+				Token:     "token",
+				Value:     *setValue,
+				UpdatedAt: time.Now(),
+			}, nil
+		},
+	}
+
+	// Create service.
+	s, err := NewService(logger, db, ms, "salt")
+	is.NoErr(err) // service initializes correctly.
+
+	ctx := context.TODO()
+
+	// Set dial.
+	err = s.SetDialValue(ctx, "team", "user", 44.4)
+	is.NoErr(err) // setting dial succeeded.
+
+	// Get dial.
+	d, err := s.GetDial(ctx, "team", "user")
+	is.NoErr(err) // getting dial succeeded.
+
+	// Check underlying service was called.
+	is.True(ms.GetDialInvoked)
+
+	// Check dial values are as expected.
+	is.Equal(setID, getID)     // dial id used in set is used in get.
+	is.Equal(d.ID, getID)      // returned dial id is as expected.
+	is.Equal(d.Name, "name")   // returned dial name is as expected (what is returned from GetDial).
+	is.Equal(d.Token, "token") // returned dial token is as expected (what is returned from GetDial).
+	is.Equal(d.Value, 44.4)    // returned dial value is as expected (what is returned from GetDial).
+}
+
+func TestGettingNonExistantDial(t *testing.T) {
+
+	is := is.New(t)
+
+	// Get a Bolt DB.
+	db, cleanup := newTmpBoltDB(t)
+	defer cleanup()
+
+	// Create logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create mock ooohh.Service.
+	ms := &mock.Service{}
+
+	// Create service.
+	s, err := NewService(logger, db, ms, "salt")
+	is.NoErr(err) // service initializes correctly.
+
+	ctx := context.TODO()
+
+	// Get dial.
+	_, err = s.GetDial(ctx, "team", "user")
+	is.True(errors.Is(err, ErrDialNotFound)) // dial not found error.
+
+	// Check underlying service was not called.
+	is.True(!ms.GetDialInvoked)
+}
+
+func TestGettingDialError(t *testing.T) {
+
+	is := is.New(t)
+
+	// Get a Bolt DB.
+	db, cleanup := newTmpBoltDB(t)
+	defer cleanup()
+
+	// Create logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create mock ooohh.Service.
+	ms := &mock.Service{
+		CreateDialFn: func(ctx context.Context, name string, token string) (*ooohh.Dial, error) {
+			return &ooohh.Dial{
+				ID:        ooohh.DialID(fmt.Sprintf("dial-%s", name)),
+				Name:      name,
+				Token:     token,
+				Value:     0.0,
+				UpdatedAt: time.Now(),
+			}, nil
+		},
+		SetDialFn: func(ctx context.Context, id ooohh.DialID, token string, value float64) error {
+			return nil
+		},
+		GetDialFn: func(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, error) {
+			return nil, errors.New("uh-oh")
+		},
+	}
+
+	// Create service.
+	s, err := NewService(logger, db, ms, "salt")
+	is.NoErr(err) // service initializes correctly.
+
+	ctx := context.TODO()
+
+	// Set dial.
+	err = s.SetDialValue(ctx, "team", "user", 44.4)
+	is.NoErr(err) // setting dial succeeded.
+
+	// Get dial.
+	_, err = s.GetDial(ctx, "team", "user")
+	is.True(err != nil)                       // error returned.
+	is.True(!errors.Is(err, ErrDialNotFound)) // error isn't dial not found error.
+
+	// Check underlying service was called.
+	is.True(ms.GetDialInvoked)
 }

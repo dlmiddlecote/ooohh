@@ -81,10 +81,19 @@ func (s *Service) Reset() {
 type SlackService struct {
 	SetDialValueFn      func(ctx context.Context, teamID, userID string, value float64) error
 	SetDialValueInvoked bool
+
+	GetDialFn      func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error)
+	GetDialInvoked bool
 }
 
 // SetDialValue updates the given user's dial value.
 func (s *SlackService) SetDialValue(ctx context.Context, teamID string, userID string, value float64) error {
 	s.SetDialValueInvoked = true
 	return s.SetDialValueFn(ctx, teamID, userID, value)
+}
+
+// GetDial returns the dial for the given user.
+func (s *SlackService) GetDial(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {
+	s.GetDialInvoked = true
+	return s.GetDialFn(ctx, teamID, userID)
 }

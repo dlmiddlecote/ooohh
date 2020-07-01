@@ -13,10 +13,17 @@ import (
 	"github.com/dlmiddlecote/ooohh"
 )
 
+var (
+	// ErrDialNotFound signifies that the dial is not found for the given user.
+	ErrDialNotFound = errors.New("dial not found")
+)
+
 // Service represents a service for managing dials from slack commands.
 type Service interface {
 	// SetDialValue updates the given user's dial value.
 	SetDialValue(ctx context.Context, teamID, userID string, value float64) error
+	// GetDial returns the dial for the given user.
+	GetDial(ctx context.Context, teamID, userID string) (*ooohh.Dial, error)
 }
 
 type service struct {
@@ -46,7 +53,7 @@ func NewService(logger *zap.SugaredLogger, db *bolt.DB, s ooohh.Service, salt st
 // SetDialValue updates the given user's dial value.
 func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value float64) error {
 
-	key := fmt.Sprintf("%s:%s", teamID, userID)
+	key := getUserKey(teamID, userID)
 	token := generateToken(key, s.salt)
 
 	// Try to retrieve the dial identifier for this user.
@@ -67,7 +74,7 @@ func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value
 	if dialID == nil {
 		dial, err := s.s.CreateDial(ctx, key, token)
 		if err != nil {
-			return errors.Wrap(err, "creating board")
+			return errors.Wrap(err, "creating dial")
 		}
 
 		// Store user -> dial mapping.
@@ -94,6 +101,42 @@ func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value
 	}
 
 	return nil
+}
+
+// GetDial returns the dial for the given user.
+func (s *service) GetDial(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {
+
+	key := getUserKey(teamID, userID)
+
+	// Retrieve users dial ID.
+	var dialID *ooohh.DialID
+	err := s.db.View(func(txn *bolt.Tx) error {
+		if v := txn.Bucket([]byte("slack_users")).Get([]byte(key)); v != nil {
+			d := ooohh.DialID(v)
+			dialID = &d
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieving user dial id")
+	}
+
+	if dialID == nil {
+		// Dial wasn't found for user.
+		return nil, ErrDialNotFound
+	}
+
+	d, err := s.s.GetDial(ctx, *dialID)
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieving user dial")
+	}
+
+	return d, nil
+}
+
+func getUserKey(teamID, userID string) string {
+	return fmt.Sprintf("%s:%s", teamID, userID)
 }
 
 func generateToken(key, salt string) string {
