@@ -2,9 +2,14 @@ package api
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/dlmiddlecote/kit/api"
+	"github.com/dlmiddlecote/ooohh/pkg/slack"
 	"go.uber.org/zap"
 
 	"github.com/dlmiddlecote/ooohh"
@@ -13,12 +18,14 @@ import (
 type ooohhAPI struct {
 	logger *zap.SugaredLogger
 	s      ooohh.Service
+	ss     slack.Service
 }
 
 // NewAPI returns an implementation of api.API.
 // The returned API exposes the given ooohh service as an HTTP API.
-func NewAPI(logger *zap.SugaredLogger, s ooohh.Service) *ooohhAPI {
-	return &ooohhAPI{logger, s}
+// The Slack command webhook is also exposed.
+func NewAPI(logger *zap.SugaredLogger, s ooohh.Service, ss slack.Service) *ooohhAPI {
+	return &ooohhAPI{logger, s, ss}
 }
 
 // Endpoints implements api.API. We list all API endpoints here.
@@ -53,6 +60,11 @@ func (a *ooohhAPI) Endpoints() []api.Endpoint {
 			Method:  "PATCH",
 			Path:    "/api/boards/:id",
 			Handler: a.setBoardDials(),
+		},
+		{
+			Method:  "POST",
+			Path:    "/api/slack/command",
+			Handler: a.slackCommand(),
 		},
 	}
 }
@@ -261,5 +273,140 @@ func (a *ooohhAPI) setBoardDials() http.Handler {
 		}
 
 		api.Respond(w, r, http.StatusOK, response(*b))
+	})
+}
+
+func (a *ooohhAPI) slackCommand() http.Handler {
+	type request struct {
+		Command string
+		Text    string
+		UserID  string
+		TeamID  string
+	}
+	type response struct {
+		Type string `json:"response_type"`
+		Text string `json:"text"`
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		err := r.ParseForm()
+		if err != nil {
+			a.logger.Errorw("could not parse form", "err", err)
+			// Return with a 500 to tell slack that we couldn't process this request.
+			api.Problem(w, r, "Invalid Request", "Could not parse form", http.StatusInternalServerError)
+			return
+		}
+
+		body := request{
+			Command: r.FormValue("command"),
+			Text:    r.FormValue("text"),
+			UserID:  r.FormValue("user_id"),
+			TeamID:  r.FormValue("team_id"),
+		}
+
+		if body.Command == "" || body.UserID == "" || body.TeamID == "" {
+			a.logger.Errorw("could not parse request", "body", body)
+			// Return with a 500 to tell slack that we couldn't process this request.
+			api.Problem(w, r, "Invalid Request", "Could not parse form values", http.StatusInternalServerError)
+			return
+		}
+
+		// Check the command is indeed `/wtf`.
+		if body.Command != "/wtf" {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Not sure what you mean there, friend.",
+			})
+			return
+		}
+
+		t := strings.TrimSpace(body.Text)
+
+		// Return a help string.
+		if t == "help" {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Use the following format to set a value: `/wtf <number>`",
+			})
+			return
+		}
+
+		// Query for value.
+		if t == "?" {
+			d, err := a.ss.GetDial(r.Context(), body.TeamID, body.UserID)
+			if err != nil {
+
+				// Calculate the response text based on the error value.
+				text := "Oops, something didn't quite work out. Please, try again."
+				if errors.Is(err, slack.ErrDialNotFound) {
+					text = "Use the following format to set a value: `/wtf <number>`"
+				}
+
+				api.Respond(w, r, http.StatusOK, response{
+					Type: "ephemeral",
+					Text: text,
+				})
+				return
+			}
+
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: fmt.Sprintf("Your dial (%s) is set to %.1f.", d.ID, d.Value),
+			})
+			return
+		}
+
+		// Parse text into a float64. Respond with message if not ok.
+		value, err := strconv.ParseFloat(t, 64)
+		if err != nil {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Please supply a single number as your WTF level.",
+			})
+			return
+		}
+
+		// Check number isn't NaN value.
+		if math.IsNaN(value) {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Sneaky. Please supply a _number_ as your WTF level.",
+			})
+			return
+		}
+
+		// Check number isn't infinite.
+		if math.IsInf(value, 1) || math.IsInf(value, -1) {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Definitely seek out help! Unfortunately, I only go up to 100.",
+			})
+			return
+		}
+
+		// Set value.
+		err = a.ss.SetDialValue(r.Context(), body.TeamID, body.UserID, value)
+		if err != nil {
+			api.Respond(w, r, http.StatusOK, response{
+				Type: "ephemeral",
+				Text: "Oops, something didn't quite work out. Please, try again.",
+			})
+			return
+		}
+
+		// Calculate response text.
+		text := "Ooohh, I wish I felt like that."
+		if value > 75 {
+			text = "Ooohh, make sure you check in with someone, maybe they can help."
+		} else if value > 50 {
+			text = "Ooohh, make sure you take a break!"
+		}
+
+		// Respond with ok.
+		api.Respond(w, r, http.StatusOK, response{
+			Type: "ephemeral",
+			Text: text,
+		})
 	})
 }

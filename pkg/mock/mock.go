@@ -6,6 +6,7 @@ import (
 	"github.com/dlmiddlecote/ooohh"
 )
 
+// Service provides a mock ooohh.Service.
 type Service struct {
 	CreateDialFn      func(ctx context.Context, name string, token string) (*ooohh.Dial, error)
 	CreateDialInvoked bool
@@ -64,4 +65,35 @@ func (s *Service) GetBoard(ctx context.Context, id ooohh.BoardID) (*ooohh.Board,
 func (s *Service) SetBoard(ctx context.Context, id ooohh.BoardID, token string, dials []ooohh.DialID) error {
 	s.SetBoardInvoked = true
 	return s.SetBoardFn(ctx, id, token, dials)
+}
+
+// Reset undoes the tracking of function invocations.
+func (s *Service) Reset() {
+	s.CreateDialInvoked = false
+	s.GetDialInvoked = false
+	s.SetDialInvoked = false
+	s.CreateBoardInvoked = false
+	s.GetBoardInvoked = false
+	s.SetBoardInvoked = false
+}
+
+// SlackService provides a mock slack.Service.
+type SlackService struct {
+	SetDialValueFn      func(ctx context.Context, teamID, userID string, value float64) error
+	SetDialValueInvoked bool
+
+	GetDialFn      func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error)
+	GetDialInvoked bool
+}
+
+// SetDialValue updates the given user's dial value.
+func (s *SlackService) SetDialValue(ctx context.Context, teamID string, userID string, value float64) error {
+	s.SetDialValueInvoked = true
+	return s.SetDialValueFn(ctx, teamID, userID, value)
+}
+
+// GetDial returns the dial for the given user.
+func (s *SlackService) GetDial(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {
+	s.GetDialInvoked = true
+	return s.GetDialFn(ctx, teamID, userID)
 }
