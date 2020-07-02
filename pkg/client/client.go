@@ -9,16 +9,13 @@ import (
 	"path"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/dlmiddlecote/ooohh"
 	"github.com/pkg/errors"
 )
 
 type client struct {
-	base   *url.URL
-	logger *zap.SugaredLogger
-	c      *http.Client
+	base *url.URL
+	c    *http.Client
 }
 
 type (
@@ -36,10 +33,9 @@ type (
 	}
 )
 
-func NewClient(base *url.URL, logger *zap.SugaredLogger) *client {
+func NewClient(base *url.URL) *client {
 	return &client{
-		base:   base,
-		logger: logger,
+		base: base,
 		c: &http.Client{
 			Timeout: 10 * time.Second,
 		},
