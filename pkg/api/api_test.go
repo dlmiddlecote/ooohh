@@ -1374,7 +1374,7 @@ func TestSlackCommand(t *testing.T) {
 		msg:               "query command",
 		text:              "?",
 		expType:           "ephemeral",
-		expText:           "Your dial (id) is set to 10.0. Your token is 'token'.",
+		expText:           "Your dial (id) is set to 10.0.\nYour token is 'token'.",
 		expServiceInvoked: false,
 		expGetInvoked:     true,
 	}, {

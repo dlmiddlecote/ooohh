@@ -62,6 +62,7 @@ func (c *client) CreateDial(ctx context.Context, name string, token string) (*oo
 		return nil, errors.Wrap(err, "creating request")
 	}
 
+	r.Header.Set("User-Agent", "ooohh cli")
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Accept", "application/json")
 
@@ -93,7 +94,43 @@ func (c *client) CreateDial(ctx context.Context, name string, token string) (*oo
 
 // GetDial retrieves a dial by ID. Anyone can retrieve any dial with its ID.
 func (c *client) GetDial(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, error) {
-	panic("not implemented") // TODO: Implement
+
+	rel := &url.URL{Path: path.Join("/api/dials", string(id))}
+	u := c.base.ResolveReference(rel)
+
+	r, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating request")
+	}
+
+	r.Header.Set("User-Agent", "ooohh cli")
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Accept", "application/json")
+
+	resp, err := c.c.Do(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "making request")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// decode problem response
+		var problem problemResponse
+		err = json.NewDecoder(resp.Body).Decode(&problem)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid response")
+		}
+		return nil, errors.New(problem.Title)
+	}
+
+	// decode into a dial
+	var d ooohh.Dial
+	err = json.NewDecoder(resp.Body).Decode(&d)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid response")
+	}
+
+	return &d, nil
 }
 
 // SetDial updates the dial value. It can be updated by anyone who knows
@@ -116,6 +153,7 @@ func (c *client) SetDial(ctx context.Context, id ooohh.DialID, token string, val
 		return errors.Wrap(err, "creating request")
 	}
 
+	r.Header.Set("User-Agent", "ooohh cli")
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Accept", "application/json")
 

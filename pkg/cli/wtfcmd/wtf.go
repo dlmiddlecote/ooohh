@@ -7,9 +7,10 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/dlmiddlecote/ooohh/pkg/cli/rootcmd"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/pkg/errors"
+
+	"github.com/dlmiddlecote/ooohh/pkg/cli/rootcmd"
 )
 
 // Config for the wtf subcommand, including a reference to the ooohh service.

@@ -352,7 +352,7 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 
 			api.Respond(w, r, http.StatusOK, response{
 				Type: "ephemeral",
-				Text: fmt.Sprintf("Your dial (%s) is set to %.1f. Your token is '%s'.", d.ID, d.Value, d.Token),
+				Text: fmt.Sprintf("Your dial (%s) is set to %.1f.\nYour token is '%s'.", d.ID, d.Value, d.Token),
 			})
 			return
 		}

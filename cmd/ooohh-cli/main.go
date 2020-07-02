@@ -12,7 +12,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/dlmiddlecote/ooohh/pkg/cli/createcmd"
+	"github.com/dlmiddlecote/ooohh/pkg/cli/querycmd"
 	"github.com/dlmiddlecote/ooohh/pkg/cli/rootcmd"
+	"github.com/dlmiddlecote/ooohh/pkg/cli/setcmd"
 	"github.com/dlmiddlecote/ooohh/pkg/cli/wtfcmd"
 	"github.com/dlmiddlecote/ooohh/pkg/client"
 )
@@ -40,12 +42,16 @@ func run(args []string, stdout io.Writer) error {
 		rootCommand, rootConfig = rootcmd.New(home)
 		createCommand           = createcmd.New(rootConfig, stdout)
 		wtfCommand              = wtfcmd.New(rootConfig, stdout)
+		queryCommand            = querycmd.New(rootConfig, stdout)
+		setCommand              = setcmd.New(rootConfig, stdout)
 	)
 
 	// Register subcommands.
 	rootCommand.Subcommands = []*ffcli.Command{
 		createCommand,
 		wtfCommand,
+		queryCommand,
+		setCommand,
 	}
 
 	// Parse arguments.
