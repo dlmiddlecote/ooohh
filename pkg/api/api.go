@@ -19,13 +19,15 @@ type ooohhAPI struct {
 	logger *zap.SugaredLogger
 	s      ooohh.Service
 	ss     slack.Service
+
+	ui *ui
 }
 
 // NewAPI returns an implementation of api.API.
 // The returned API exposes the given ooohh service as an HTTP API.
 // The Slack command webhook is also exposed.
 func NewAPI(logger *zap.SugaredLogger, s ooohh.Service, ss slack.Service) *ooohhAPI {
-	return &ooohhAPI{logger, s, ss}
+	return &ooohhAPI{logger, s, ss, &ui{s}}
 }
 
 // Endpoints implements api.API. We list all API endpoints here.
@@ -65,6 +67,34 @@ func (a *ooohhAPI) Endpoints() []api.Endpoint {
 			Method:  "POST",
 			Path:    "/api/slack/command",
 			Handler: a.slackCommand(),
+		},
+		//
+		// UI Handlers
+		//
+		{
+			Method:  "GET",
+			Path:    "/",
+			Handler: a.ui.index(),
+		},
+		{
+			Method:  "GET",
+			Path:    "/new",
+			Handler: a.ui.createBoard(),
+		},
+		{
+			Method:  "POST",
+			Path:    "/new",
+			Handler: a.ui.createBoard(),
+		},
+		{
+			Method:  "GET",
+			Path:    "/boards/:id",
+			Handler: a.ui.getBoard(),
+		},
+		{
+			Method:  "POST",
+			Path:    "/boards/:id",
+			Handler: a.ui.getBoard(),
 		},
 	}
 }

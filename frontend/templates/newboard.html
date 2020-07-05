@@ -1,0 +1,38 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>ooohh.wtf</title>
+    <style type="text/css">
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Create Board</h1>
+    <form method="POST" name="create-board" novalidate>
+        <div>
+            {{ with .Errors.Name }}
+            <p class="error">{{ . }}</p>
+            {{ end }}
+            <p><label>Name:</label></p>
+            <p><input type="text" name="name" value="{{ .Name }}"></p>
+        </div>
+        <div>
+            {{ with .Errors.Token }}
+            <p class="error">{{ . }}</p>
+            {{ end }}
+            <p><label>Token:</label></p>
+            <p><input type="password" name="token" value="{{ .Token }}"></p>
+        </div>
+        <div>
+            <input type="submit" value="Create">
+        </div>
+    </form>
+</body>
+
+</html>
