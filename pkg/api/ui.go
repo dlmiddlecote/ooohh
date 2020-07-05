@@ -70,22 +70,40 @@ func (u *ui) createBoard() http.Handler {
 
 		board, err := u.s.CreateBoard(r.Context(), body.Name, body.Token)
 		if err != nil {
-			tmpl.Execute(w, nil) //nolint:errcheck
+			// add a dummy error to the body to return.
+			body.Errors["CreateBoard"] = "Error creating board, please try again."
+
+			tmpl.Execute(w, body) //nolint:errcheck
 			return
 		}
 
-		api.Redirect(w, r, fmt.Sprintf("/boards/%s", board.ID), http.StatusTemporaryRedirect)
+		api.Redirect(w, r, fmt.Sprintf("/boards/%s", board.ID), http.StatusSeeOther)
 	})
+}
+
+type boardDialInfo struct {
+	DialID     string
+	BoardToken string
+	Errors     map[string]string
+}
+
+func (b *boardDialInfo) Validate() bool {
+	b.Errors = make(map[string]string)
+
+	if strings.TrimSpace(b.DialID) == "" {
+		b.Errors["DialID"] = "Please enter a dial ID."
+	}
+
+	if strings.TrimSpace(b.BoardToken) == "" {
+		b.Errors["BoardToken"] = "Please enter a board token."
+	}
+
+	return len(b.Errors) == 0
 }
 
 func (u *ui) getBoard() http.Handler {
 	f, err := pkger.Open("/frontend/templates/board.html")
 	tmpl := template.Must(parseFile(f, err))
-
-	type request struct {
-		DialID     string
-		BoardToken string
-	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := ooohh.BoardID(api.URLParam(r, "id"))
@@ -113,7 +131,7 @@ func (u *ui) getBoard() http.Handler {
 			return
 		}
 
-		body := request{
+		body := boardDialInfo{
 			DialID:     r.FormValue("dialID"),
 			BoardToken: r.FormValue("token"),
 		}

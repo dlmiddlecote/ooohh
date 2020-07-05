@@ -23,7 +23,7 @@
     <h3>Dials</h3>
     <ul>
         {{ range .Dials }}
-        <li>{{ .Name }} - {{ .Value }}</li>
+        <li>{{ .Name }} - {{ printf "%.1f" .Value }}</li>
         {{ end }}
     </ul>
 
