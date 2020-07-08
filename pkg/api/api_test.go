@@ -617,6 +617,14 @@ func TestSetDialErrors(t *testing.T) {
 		expTitle:      "Not Found",
 		expDetail:     "Not Found",
 	}, {
+		msg:           "set with invalid value",
+		setErr:        ooohh.ErrDialValueInvalid,
+		getErr:        nil,
+		expGetInvoked: false,
+		expStatus:     http.StatusBadRequest,
+		expTitle:      "Bad Request",
+		expDetail:     "Invalid value",
+	}, {
 		msg:           "set with unknown error",
 		setErr:        errors.New("set error"),
 		getErr:        nil,
@@ -1415,6 +1423,18 @@ func TestSlackCommand(t *testing.T) {
 		expText:           "Ooohh, make sure you check in with someone, maybe they can help.",
 		expServiceInvoked: true,
 	}, {
+		msg:               "value too high",
+		text:              "101",
+		expType:           "ephemeral",
+		expText:           "Value out of bounds. Please upply number between 0 and 100.",
+		expServiceInvoked: true,
+	}, {
+		msg:               "value too low",
+		text:              "-1",
+		expType:           "ephemeral",
+		expText:           "Value out of bounds. Please upply number between 0 and 100.",
+		expServiceInvoked: true,
+	}, {
 		msg:               "with spaces",
 		text:              "           85       ",
 		expType:           "ephemeral",
@@ -1471,6 +1491,9 @@ func TestSlackCommand(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{
 				SetDialValueFn: func(ctx context.Context, teamID, userID, userName string, value float64) error {
+					if value > 100.0 || value < 0.0 {
+						return ooohh.ErrDialValueInvalid
+					}
 					return nil
 				},
 				GetDialFn: func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {

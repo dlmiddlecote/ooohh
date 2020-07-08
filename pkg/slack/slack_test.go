@@ -211,6 +211,50 @@ func TestSettingDial(t *testing.T) {
 	is.True(setID != createdID)        // new dial id is different for different teams.
 }
 
+func TestSetDialError(t *testing.T) {
+
+	is := is.New(t)
+
+	// Get a Bolt DB.
+	db, cleanup := newTmpBoltDB(t)
+	defer cleanup()
+
+	// Create logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create mock ooohh.Service.
+	ms := &mock.Service{
+		CreateDialFn: func(ctx context.Context, name string, token string) (*ooohh.Dial, error) {
+			return &ooohh.Dial{
+				ID:        ooohh.DialID(fmt.Sprintf("dial-%s", name)),
+				Name:      name,
+				Token:     token,
+				Value:     0.0,
+				UpdatedAt: time.Now(),
+			}, nil
+		},
+		SetDialFn: func(ctx context.Context, id ooohh.DialID, token string, value float64) error {
+			return ooohh.ErrDialValueInvalid
+		},
+	}
+
+	// Create service.
+	s, err := NewService(logger, db, ms, "salt")
+	is.NoErr(err) // service initializes correctly.
+
+	ctx := context.TODO()
+
+	// Set dial for the first time.
+	err = s.SetDialValue(ctx, "team", "user", "name", 101.0)
+	is.True(errors.Is(err, ooohh.ErrDialValueInvalid)) // invalid dial value is returned.
+
+	// Check that CreateDial was called on the service.
+	is.True(ms.CreateDialInvoked) // dial was created.
+
+	// Check that SetDial was called on the service.
+	is.True(ms.SetDialInvoked) // dial value was set.
+}
+
 func TestGettingDial(t *testing.T) {
 
 	is := is.New(t)

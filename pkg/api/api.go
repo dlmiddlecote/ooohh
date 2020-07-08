@@ -185,6 +185,9 @@ func (a *ooohhAPI) setDialValue() http.Handler {
 			if errors.Is(err, ooohh.ErrDialNotFound) {
 				api.NotFound(w, r)
 				return
+			} else if errors.Is(err, ooohh.ErrDialValueInvalid) {
+				api.Problem(w, r, "Bad Request", "Invalid value", http.StatusBadRequest)
+				return
 			} else if errors.Is(err, ooohh.ErrUnauthorized) {
 				api.Problem(w, r, "Unauthorized", "Invalid token", http.StatusUnauthorized)
 				return
@@ -426,9 +429,14 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 		// Set value.
 		err = a.ss.SetDialValue(r.Context(), body.TeamID, body.UserID, body.UserName, value)
 		if err != nil {
+			text := "Oops, something didn't quite work out. Please, try again."
+			if errors.Is(err, ooohh.ErrDialValueInvalid) {
+				text = "Value out of bounds. Please upply number between 0 and 100."
+			}
+
 			api.Respond(w, r, http.StatusOK, response{
 				Type: "ephemeral",
-				Text: "Oops, something didn't quite work out. Please, try again.",
+				Text: text,
 			})
 			return
 		}
