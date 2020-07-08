@@ -24,6 +24,7 @@ import (
 	"github.com/dlmiddlecote/ooohh"
 	"github.com/dlmiddlecote/ooohh/pkg/mock"
 	"github.com/dlmiddlecote/ooohh/pkg/slack"
+	"github.com/dlmiddlecote/ooohh/pkg/ui"
 )
 
 // newTestLogger returns a logger usable in tests, and also a struct that captures log lines
@@ -79,8 +80,11 @@ func TestCreateDial(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	r, err := http.NewRequest("POST", "/api/dials", strings.NewReader(`{"name": "test", "token": "token"}`))
@@ -133,8 +137,11 @@ func TestCreateDialValidation(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	for _, tt := range []struct {
 		msg       string
@@ -220,8 +227,11 @@ func TestCreateDialError(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	r, err := http.NewRequest("POST", "/api/dials", strings.NewReader(`{"name": "test", "token": "token"}`))
@@ -281,8 +291,11 @@ func TestGetDial(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	r, err := newRequest("GET", "/api/dials/:id", nil, httprouter.Params{{Key: "id", Value: "1234"}})
@@ -351,8 +364,11 @@ func TestGetDialErrors(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Create a new request.
 			r, err := newRequest("GET", "/api/dials/:id", nil, httprouter.Params{{Key: "id", Value: "1234"}})
@@ -437,8 +453,11 @@ func TestSetDial(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Create a new request.
 			r, err := newRequest("PATCH", "/api/dials/:id", strings.NewReader(fmt.Sprintf(`{"token": "token", "value": %f}`, tt.value)), httprouter.Params{{Key: "id", Value: "1234"}})
@@ -493,8 +512,11 @@ func TestSetDialValidation(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	for _, tt := range []struct {
 		msg       string
@@ -635,8 +657,11 @@ func TestSetDialErrors(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Create a new request.
 			r, err := newRequest("PATCH", "/api/dials/:id", strings.NewReader(`{"token": "token", "value": 66.6}`), httprouter.Params{{Key: "id", Value: "1234"}})
@@ -697,8 +722,11 @@ func TestCreateBoard(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	r, err := http.NewRequest("POST", "/api/boards", strings.NewReader(`{"name": "test", "token": "token"}`))
@@ -751,8 +779,11 @@ func TestCreateBoardValidation(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	for _, tt := range []struct {
 		msg       string
@@ -838,8 +869,11 @@ func TestCreateBoardError(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	r, err := http.NewRequest("POST", "/api/boards", strings.NewReader(`{"name": "test", "token": "token"}`))
@@ -901,8 +935,11 @@ func TestGetBoard(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	r, err := newRequest("GET", "/api/boards/:id", nil, httprouter.Params{{Key: "id", Value: "1234"}})
@@ -980,8 +1017,11 @@ func TestGetBoardErrors(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Create a new request.
 			r, err := newRequest("GET", "/api/boards/:id", nil, httprouter.Params{{Key: "id", Value: "1234"}})
@@ -1079,8 +1119,11 @@ func TestSetBoard(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Marshal json.
 			type request struct {
@@ -1147,8 +1190,11 @@ func TestSetBoardValidation(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	for _, tt := range []struct {
 		msg       string
@@ -1289,8 +1335,11 @@ func TestSetBoardErrors(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Create a new request.
 			r, err := newRequest("PATCH", "/api/boards/:id", strings.NewReader(`{"token": "token", "dials": ["4321"]}`), httprouter.Params{{Key: "id", Value: "1234"}})
@@ -1435,8 +1484,11 @@ func TestSlackCommand(t *testing.T) {
 				},
 			}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Create a new request.
 			formData := url.Values{
@@ -1496,8 +1548,11 @@ func TestSlackCommandServiceError(t *testing.T) {
 		},
 	}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	formData := url.Values{
@@ -1552,8 +1607,11 @@ func TestSlackCommandGetDialError(t *testing.T) {
 		},
 	}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	formData := url.Values{
@@ -1607,8 +1665,11 @@ func TestSlackCommandInvalidCommand(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	formData := url.Values{
@@ -1688,8 +1749,11 @@ func TestSlackCommandValidation(t *testing.T) {
 			// Create a mock slack service.
 			ss := &mock.SlackService{}
 
+			// Create UI.
+			ui := ui.NewUI(s)
+
 			// Get an API.
-			a := NewAPI(logger, s, ss)
+			a := NewAPI(logger, s, ss, ui)
 
 			// Create a new request.
 			r, err := http.NewRequest("POST", "/api/slack/command", strings.NewReader(tt.data.Encode()))
@@ -1736,8 +1800,11 @@ func TestSlackCommandInvalidForm(t *testing.T) {
 	// Create a mock slack service.
 	ss := &mock.SlackService{}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	r, err := http.NewRequest("POST", "/api/slack/command", nil)
@@ -1784,8 +1851,11 @@ func TestSlackCommandQueryWithoutPriorSet(t *testing.T) {
 		},
 	}
 
+	// Create UI.
+	ui := ui.NewUI(s)
+
 	// Get an API.
-	a := NewAPI(logger, s, ss)
+	a := NewAPI(logger, s, ss, ui)
 
 	// Create a new request.
 	formData := url.Values{

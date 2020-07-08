@@ -9,23 +9,26 @@ import (
 	"strings"
 
 	"github.com/dlmiddlecote/kit/api"
-	"github.com/dlmiddlecote/ooohh/pkg/slack"
 	"go.uber.org/zap"
 
 	"github.com/dlmiddlecote/ooohh"
+	"github.com/dlmiddlecote/ooohh/pkg/slack"
+	"github.com/dlmiddlecote/ooohh/pkg/ui"
 )
 
 type ooohhAPI struct {
 	logger *zap.SugaredLogger
 	s      ooohh.Service
 	ss     slack.Service
+
+	ui *ui.UI
 }
 
 // NewAPI returns an implementation of api.API.
 // The returned API exposes the given ooohh service as an HTTP API.
 // The Slack command webhook is also exposed.
-func NewAPI(logger *zap.SugaredLogger, s ooohh.Service, ss slack.Service) *ooohhAPI {
-	return &ooohhAPI{logger, s, ss}
+func NewAPI(logger *zap.SugaredLogger, s ooohh.Service, ss slack.Service, ui *ui.UI) *ooohhAPI {
+	return &ooohhAPI{logger, s, ss, ui}
 }
 
 // Endpoints implements api.API. We list all API endpoints here.
@@ -65,6 +68,39 @@ func (a *ooohhAPI) Endpoints() []api.Endpoint {
 			Method:  "POST",
 			Path:    "/api/slack/command",
 			Handler: a.slackCommand(),
+		},
+		//
+		// UI Handlers
+		//
+		{
+			Method:  "GET",
+			Path:    "/",
+			Handler: a.ui.Index(),
+		},
+		{
+			Method:  "GET",
+			Path:    "/new",
+			Handler: a.ui.CreateBoard(),
+		},
+		{
+			Method:  "POST",
+			Path:    "/new",
+			Handler: a.ui.CreateBoard(),
+		},
+		{
+			Method:  "GET",
+			Path:    "/boards/:id",
+			Handler: a.ui.GetBoard(),
+		},
+		{
+			Method:  "POST",
+			Path:    "/boards/:id",
+			Handler: a.ui.GetBoard(),
+		},
+		{
+			Method:  "GET",
+			Path:    "/static/*filepath",
+			Handler: a.ui.Static(),
 		},
 	}
 }

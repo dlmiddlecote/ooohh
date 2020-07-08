@@ -20,6 +20,7 @@ import (
 	"github.com/dlmiddlecote/ooohh/pkg/api"
 	"github.com/dlmiddlecote/ooohh/pkg/service"
 	"github.com/dlmiddlecote/ooohh/pkg/slack"
+	"github.com/dlmiddlecote/ooohh/pkg/ui"
 )
 
 const (
@@ -135,10 +136,13 @@ func run() error {
 			return errors.Wrap(err, "creating slack service")
 		}
 
+		// Initialise our UI component.
+		ui := ui.NewUI(s)
+
 		// Create our API. This is an implementation of the kit API.
 		// It has a dependency on the ooohh service, as it provides this service as a
 		// HTTP API.
-		oApi := api.NewAPI(logger.Named("api"), s, ss)
+		oApi := api.NewAPI(logger.Named("api"), s, ss, ui)
 
 		// Create our http.Server, exposing the account API on the given host.
 		app = kitapi.NewServer(cfg.Web.APIHost, logger.Named("http"), oApi)

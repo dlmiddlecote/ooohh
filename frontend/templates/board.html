@@ -1,0 +1,56 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>ooohh.wtf</title>
+</head>
+
+<body>
+    <h1>{{ .Board.Name }}</h1>
+    <a href="/new">New Board</a>
+    <hr>
+    <h3>Add Dial</h3>
+    <form method="POST" name="add-dial" novalidate>
+        {{- with .BoardDialInfo }}
+        {{- with .Errors.SetBoard }}
+        <div>
+            <p class="error">{{ . }}</p>
+        </div>
+        {{- end }}
+        {{- end }}
+        <div>
+            {{- with .BoardDialInfo}}
+            {{- with .Errors.DialID}}
+            <p class="error">{{ . }}</p>
+            {{- end }}
+            {{- end }}
+            <p><label>Dial ID:</label></p>
+            <p><input type="text" name="dialID" value="{{if .BoardDialInfo}}{{.BoardDialInfo.DialID }}{{- end}}"></p>
+        </div>
+        <div>
+            {{- with .BoardDialInfo}}
+            {{- with .Errors.BoardToken}}
+            <p class="error">{{ . }}</p>
+            {{- end }}
+            {{- end }}
+            <p><label>Board Token:</label></p>
+            <p><input type="password" name="token" value="{{if .BoardDialInfo}}{{.BoardDialInfo.BoardToken }}{{- end}}">
+            </p>
+        </div>
+        <div>
+            <p><input type="submit" value="Add"></p>
+        </div>
+    </form>
+    <hr>
+    <h3>Dials</h3>
+    <ul>
+        {{- range .Board.Dials }}
+        <li>{{ .Name }} - {{ printf "%.1f" .Value }}</li>
+        {{- end }}
+    </ul>
+
+</body>
+
+</html>
