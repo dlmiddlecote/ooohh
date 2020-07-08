@@ -1,4 +1,4 @@
-package api
+package ui
 
 import (
 	"fmt"
@@ -15,11 +15,15 @@ import (
 	"github.com/dlmiddlecote/ooohh"
 )
 
-type ui struct {
+type UI struct {
 	s ooohh.Service
 }
 
-func (u *ui) index() http.Handler {
+func NewUI(s ooohh.Service) *UI {
+	return &UI{s}
+}
+
+func (u *UI) Index() http.Handler {
 	f, err := pkger.Open("/frontend/templates/index.html")
 	tmpl := template.Must(parseFile(f, err))
 
@@ -48,7 +52,7 @@ func (b *boardInfo) Validate() bool {
 	return len(b.Errors) == 0
 }
 
-func (u *ui) createBoard() http.Handler {
+func (u *UI) CreateBoard() http.Handler {
 	f, err := pkger.Open("/frontend/templates/newboard.html")
 	tmpl := template.Must(parseFile(f, err))
 
@@ -101,7 +105,7 @@ func (b *boardDialInfo) Validate() bool {
 	return len(b.Errors) == 0
 }
 
-func (u *ui) getBoard() http.Handler {
+func (u *UI) GetBoard() http.Handler {
 	f, err := pkger.Open("/frontend/templates/board.html")
 	tmpl := template.Must(parseFile(f, err))
 

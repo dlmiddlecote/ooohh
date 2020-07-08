@@ -1,9 +1,10 @@
-package api
+package ui
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,9 +16,21 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/matryer/is"
 
+	"github.com/dlmiddlecote/kit/api"
 	"github.com/dlmiddlecote/ooohh"
 	"github.com/dlmiddlecote/ooohh/pkg/mock"
 )
+
+func newRequest(method, path string, body io.Reader, params httprouter.Params) (*http.Request, error) {
+	r, err := http.NewRequest(method, path, body)
+	if err != nil {
+		return r, err
+	}
+
+	r = api.SetDetails(r, path, params)
+
+	return r, nil
+}
 
 func TestIndexContainsLinkToCreateBoard(t *testing.T) {
 
@@ -27,7 +40,7 @@ func TestIndexContainsLinkToCreateBoard(t *testing.T) {
 	s := &mock.Service{}
 
 	// Create the ui struct.
-	ui := &ui{s}
+	ui := &UI{s}
 
 	// Create a new request.
 	r, err := http.NewRequest("GET", "/", nil)
@@ -37,7 +50,7 @@ func TestIndexContainsLinkToCreateBoard(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Invoke the index handler.
-	ui.index().ServeHTTP(rr, r)
+	ui.Index().ServeHTTP(rr, r)
 
 	// Check the response status code is correct.
 	is.Equal(rr.Code, http.StatusOK)
@@ -67,7 +80,7 @@ func TestNewBoardContainsForm(t *testing.T) {
 	s := &mock.Service{}
 
 	// Create the ui struct.
-	ui := &ui{s}
+	ui := &UI{s}
 
 	// Create a new request.
 	r, err := http.NewRequest("GET", "/new", nil)
@@ -77,7 +90,7 @@ func TestNewBoardContainsForm(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Invoke the create board handler.
-	ui.createBoard().ServeHTTP(rr, r)
+	ui.CreateBoard().ServeHTTP(rr, r)
 
 	// Check the response status code is correct.
 	is.Equal(rr.Code, http.StatusOK)
@@ -132,7 +145,7 @@ func TestCreatingBoardOK(t *testing.T) {
 	}
 
 	// Create the ui struct.
-	ui := &ui{s}
+	ui := &UI{s}
 
 	// Create a new request.
 	formData := url.Values{
@@ -147,7 +160,7 @@ func TestCreatingBoardOK(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Invoke the create board handler.
-	ui.createBoard().ServeHTTP(rr, r)
+	ui.CreateBoard().ServeHTTP(rr, r)
 
 	// Check the board was created.
 	is.True(s.CreateBoardInvoked) // board was created.
@@ -167,7 +180,7 @@ func TestCreatingBoardValidation(t *testing.T) {
 	s := &mock.Service{}
 
 	// Create the ui struct.
-	ui := &ui{s}
+	ui := &UI{s}
 
 	for _, tt := range []struct {
 		msg         string
@@ -208,7 +221,7 @@ func TestCreatingBoardValidation(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			// Invoke the create board handler.
-			ui.createBoard().ServeHTTP(rr, r)
+			ui.CreateBoard().ServeHTTP(rr, r)
 
 			// Check the board was not created.
 			is.True(!s.CreateBoardInvoked) // board was not created.
@@ -242,7 +255,7 @@ func TestCreatingBoardServiceError(t *testing.T) {
 	}
 
 	// Create the ui struct.
-	ui := &ui{s}
+	ui := &UI{s}
 
 	// Create a new request.
 	formData := url.Values{
@@ -257,7 +270,7 @@ func TestCreatingBoardServiceError(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Invoke the create board handler.
-	ui.createBoard().ServeHTTP(rr, r)
+	ui.CreateBoard().ServeHTTP(rr, r)
 
 	// Check the board was created.
 	is.True(s.CreateBoardInvoked) // board was created.
@@ -308,7 +321,7 @@ func TestGetBoardContainsBoardInformation(t *testing.T) {
 	}
 
 	// Create the ui struct.
-	ui := &ui{s}
+	ui := &UI{s}
 
 	// Create a new request.
 	r, err := newRequest("GET", "/boards/:id", nil, httprouter.Params{{Key: "id", Value: "board-id"}})
@@ -318,7 +331,7 @@ func TestGetBoardContainsBoardInformation(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Invoke the get board handler.
-	ui.getBoard().ServeHTTP(rr, r)
+	ui.GetBoard().ServeHTTP(rr, r)
 
 	// Check the response status code is correct.
 	is.Equal(rr.Code, http.StatusOK)
