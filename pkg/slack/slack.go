@@ -21,7 +21,7 @@ var (
 // Service represents a service for managing dials from slack commands.
 type Service interface {
 	// SetDialValue updates the given user's dial value.
-	SetDialValue(ctx context.Context, teamID, userID string, value float64) error
+	SetDialValue(ctx context.Context, teamID, userID, userName string, value float64) error
 	// GetDial returns the dial for the given user.
 	GetDial(ctx context.Context, teamID, userID string) (*ooohh.Dial, error)
 }
@@ -51,7 +51,7 @@ func NewService(logger *zap.SugaredLogger, db *bolt.DB, s ooohh.Service, salt st
 }
 
 // SetDialValue updates the given user's dial value.
-func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value float64) error {
+func (s *service) SetDialValue(ctx context.Context, teamID, userID, userName string, value float64) error {
 
 	key := getUserKey(teamID, userID)
 	token := generateToken(key, s.salt)
@@ -72,7 +72,7 @@ func (s *service) SetDialValue(ctx context.Context, teamID, userID string, value
 
 	// If the dialID wasn't set before, create a new dial.
 	if dialID == nil {
-		dial, err := s.s.CreateDial(ctx, key, token)
+		dial, err := s.s.CreateDial(ctx, userName, token)
 		if err != nil {
 			return errors.Wrap(err, "creating dial")
 		}

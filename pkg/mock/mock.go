@@ -79,7 +79,7 @@ func (s *Service) Reset() {
 
 // SlackService provides a mock slack.Service.
 type SlackService struct {
-	SetDialValueFn      func(ctx context.Context, teamID, userID string, value float64) error
+	SetDialValueFn      func(ctx context.Context, teamID, userID, userName string, value float64) error
 	SetDialValueInvoked bool
 
 	GetDialFn      func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error)
@@ -87,9 +87,9 @@ type SlackService struct {
 }
 
 // SetDialValue updates the given user's dial value.
-func (s *SlackService) SetDialValue(ctx context.Context, teamID string, userID string, value float64) error {
+func (s *SlackService) SetDialValue(ctx context.Context, teamID, userID, userName string, value float64) error {
 	s.SetDialValueInvoked = true
-	return s.SetDialValueFn(ctx, teamID, userID, value)
+	return s.SetDialValueFn(ctx, teamID, userID, userName, value)
 }
 
 // GetDial returns the dial for the given user.
