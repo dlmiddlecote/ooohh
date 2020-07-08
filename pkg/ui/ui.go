@@ -32,6 +32,15 @@ func (u *UI) Index() http.Handler {
 	})
 }
 
+func (u *UI) Static() http.Handler {
+	fs := http.FileServer(pkger.Dir("/frontend/static"))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.URL.Path = api.URLParam(r, "filepath")
+		fs.ServeHTTP(w, r)
+	})
+}
+
 type boardInfo struct {
 	Name   string
 	Token  string

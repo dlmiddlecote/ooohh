@@ -97,6 +97,11 @@ func (a *ooohhAPI) Endpoints() []api.Endpoint {
 			Path:    "/boards/:id",
 			Handler: a.ui.GetBoard(),
 		},
+		{
+			Method:  "GET",
+			Path:    "/static/*filepath",
+			Handler: a.ui.Static(),
+		},
 	}
 }
 
