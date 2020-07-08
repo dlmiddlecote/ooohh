@@ -1470,7 +1470,7 @@ func TestSlackCommand(t *testing.T) {
 
 			// Create a mock slack service.
 			ss := &mock.SlackService{
-				SetDialValueFn: func(ctx context.Context, teamID, userID string, value float64) error {
+				SetDialValueFn: func(ctx context.Context, teamID, userID, userName string, value float64) error {
 					return nil
 				},
 				GetDialFn: func(ctx context.Context, teamID, userID string) (*ooohh.Dial, error) {
@@ -1543,7 +1543,7 @@ func TestSlackCommandServiceError(t *testing.T) {
 
 	// Create a mock slack service.
 	ss := &mock.SlackService{
-		SetDialValueFn: func(ctx context.Context, teamID, userID string, value float64) error {
+		SetDialValueFn: func(ctx context.Context, teamID, userID, userName string, value float64) error {
 			return errors.New("uh-oh")
 		},
 	}

@@ -314,10 +314,11 @@ func (a *ooohhAPI) setBoardDials() http.Handler {
 
 func (a *ooohhAPI) slackCommand() http.Handler {
 	type request struct {
-		Command string
-		Text    string
-		UserID  string
-		TeamID  string
+		Command  string
+		Text     string
+		UserID   string
+		UserName string
+		TeamID   string
 	}
 	type response struct {
 		Type string `json:"response_type"`
@@ -335,10 +336,11 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 		}
 
 		body := request{
-			Command: r.FormValue("command"),
-			Text:    r.FormValue("text"),
-			UserID:  r.FormValue("user_id"),
-			TeamID:  r.FormValue("team_id"),
+			Command:  r.FormValue("command"),
+			Text:     r.FormValue("text"),
+			UserID:   r.FormValue("user_id"),
+			UserName: r.FormValue("user_name"),
+			TeamID:   r.FormValue("team_id"),
 		}
 
 		if body.Command == "" || body.UserID == "" || body.TeamID == "" {
@@ -422,7 +424,7 @@ func (a *ooohhAPI) slackCommand() http.Handler {
 		}
 
 		// Set value.
-		err = a.ss.SetDialValue(r.Context(), body.TeamID, body.UserID, value)
+		err = a.ss.SetDialValue(r.Context(), body.TeamID, body.UserID, body.UserName, value)
 		if err != nil {
 			api.Respond(w, r, http.StatusOK, response{
 				Type: "ephemeral",

@@ -127,7 +127,7 @@ func TestSettingDial(t *testing.T) {
 
 	// Set dial for the first time.
 	// The dial should be created.
-	err = s.SetDialValue(ctx, "team", "user", 66.6)
+	err = s.SetDialValue(ctx, "team", "user", "name", 66.6)
 	is.NoErr(err) // setting dial succeeded.
 
 	// Check that CreateDial was called on the service.
@@ -153,7 +153,7 @@ func TestSettingDial(t *testing.T) {
 
 	// Set the dial again.
 	// The dial should NOT be created.
-	err = s.SetDialValue(ctx, "team", "user", 10.0)
+	err = s.SetDialValue(ctx, "team", "user", "name", 10.0)
 	is.NoErr(err) // setting dial succeeded.
 
 	// Check that CreateDial was NOT called on the service.
@@ -177,7 +177,7 @@ func TestSettingDial(t *testing.T) {
 
 	// Set the dial for a different user in the same team.
 	// The dial should be created.
-	err = s.SetDialValue(ctx, "team", "user2", 33.3)
+	err = s.SetDialValue(ctx, "team", "user2", "name2", 33.3)
 	is.NoErr(err) // setting dial succeeded.
 
 	// Check that CreateDial was called on the service.
@@ -197,7 +197,7 @@ func TestSettingDial(t *testing.T) {
 
 	// Set the dial for the same user on a different team.
 	// The dial should be created.
-	err = s.SetDialValue(ctx, "team2", "user", 50.0)
+	err = s.SetDialValue(ctx, "team2", "user", "name3", 50.0)
 	is.NoErr(err) // setting dial succeeded.
 
 	// Check that CreateDial was called on the service.
@@ -266,7 +266,7 @@ func TestGettingDial(t *testing.T) {
 	ctx := context.TODO()
 
 	// Set dial.
-	err = s.SetDialValue(ctx, "team", "user", 44.4)
+	err = s.SetDialValue(ctx, "team", "user", "name", 44.4)
 	is.NoErr(err) // setting dial succeeded.
 
 	// Get dial.
@@ -349,7 +349,7 @@ func TestGettingDialError(t *testing.T) {
 	ctx := context.TODO()
 
 	// Set dial.
-	err = s.SetDialValue(ctx, "team", "user", 44.4)
+	err = s.SetDialValue(ctx, "team", "user", "name", 44.4)
 	is.NoErr(err) // setting dial succeeded.
 
 	// Get dial.
