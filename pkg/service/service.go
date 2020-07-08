@@ -96,6 +96,11 @@ func (s *service) GetDial(ctx context.Context, id ooohh.DialID) (*ooohh.Dial, er
 // the original token it was created with.
 func (s *service) SetDial(ctx context.Context, id ooohh.DialID, token string, value float64) error {
 
+	// check value validity.
+	if value > 100.0 || value < 0.0 {
+		return ooohh.ErrDialValueInvalid
+	}
+
 	// start read/write transaction
 	txn, err := s.db.Begin(true)
 	if err != nil {

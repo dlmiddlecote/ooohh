@@ -201,6 +201,66 @@ func TestDialNotFound(t *testing.T) {
 	is.Equal(serr, ooohh.ErrDialNotFound) // Dial not found when setting.
 }
 
+func TestDialSetValueBounds(t *testing.T) {
+
+	is := is.New(t)
+
+	// Get a Bolt DB.
+	db, cleanup := newTmpBoltDB(t)
+	defer cleanup()
+
+	// Create logger.
+	logger, _ := newTestLogger(zap.InfoLevel)
+
+	// Create service.
+	n := func() time.Time {
+		return now
+	}
+	s, err := NewService(db, logger, n)
+	is.NoErr(err) // service initializes correctly.
+
+	ctx := context.TODO()
+
+	// Create dial.
+	d, err := s.CreateDial(ctx, "DIAL", "MYTOKEN")
+	is.NoErr(err) // dial creates correctly.
+
+	for _, tt := range []struct {
+		msg   string
+		value float64
+		err   error
+	}{{
+		msg:   "valid value",
+		value: 66.6,
+		err:   nil,
+	}, {
+		msg:   "value too low",
+		value: -1.0,
+		err:   ooohh.ErrDialValueInvalid,
+	}, {
+		msg:   "value too high",
+		value: 101.0,
+		err:   ooohh.ErrDialValueInvalid,
+	}, {
+		msg:   "value on upper bound",
+		value: 100.0,
+		err:   nil,
+	}, {
+		msg:   "value on lower bound",
+		value: 0.0,
+		err:   nil,
+	}} {
+
+		t.Run(tt.msg, func(t *testing.T) {
+			is := is.New(t)
+
+			// Check service handles bound correctly.
+			err := s.SetDial(ctx, d.ID, "MYTOKEN", tt.value)
+			is.Equal(err, tt.err)
+		})
+	}
+}
+
 // Timezone stuff.
 func TestStoringTimezones(t *testing.T) {
 	is := is.New(t)

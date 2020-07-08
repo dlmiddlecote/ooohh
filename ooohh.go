@@ -61,6 +61,8 @@ const (
 	ErrUnauthorized = Error("unauthorized")
 	// ErrDialNotFound signifies that the dial specified is not found
 	ErrDialNotFound = Error("dial not found")
+	// ErrDialValueInvalid signifies that the dial value is out of bounds
+	ErrDialValueInvalid = Error("dial value invalid")
 	// ErrBoardNotFound signifies that the board specified is not found
 	ErrBoardNotFound = Error("board not found")
 )
