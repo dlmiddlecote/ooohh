@@ -12,3 +12,11 @@ html, body {
     object-fit: cover;
     transform: scale(1.7);
 }
+
+.navbar-burger {
+    color: #FFF !important;
+}
+
+.navbar-burger:hover {
+    color: #FF304F !important;
+}
