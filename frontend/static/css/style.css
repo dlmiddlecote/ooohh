@@ -2,7 +2,13 @@ html, body {
     height: 100%;
 }
 
-body {
-    font-family: 'Montserrat', sans-serif;
-    background-color: #F5F5F9;
+.navbar {
+    background-color: #0E2F56;
+}
+
+.navlogo {
+    width: 112px;
+    height: 28px;
+    object-fit: cover;
+    transform: scale(1.7);
 }
