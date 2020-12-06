@@ -1060,7 +1060,6 @@ func TestGetBoardErrors(t *testing.T) {
 			is.Equal(actualBody.Detail, tt.expDetail) // detail is correct.
 		})
 	}
-
 }
 
 func TestSetBoard(t *testing.T) {
@@ -1444,7 +1443,7 @@ func TestSlackCommand(t *testing.T) {
 		msg:               "query command",
 		text:              "?",
 		expType:           "ephemeral",
-		expText:           "Your dial (id) is set to 10.0.",
+		expText:           "Your dial (id) is set to `10.0`.\nYour token is `token`.",
 		expServiceInvoked: false,
 		expGetInvoked:     true,
 	}, {
